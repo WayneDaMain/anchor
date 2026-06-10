@@ -1,0 +1,5 @@
+{
+  "outputDirectory": "build",
+  "buildCommand": "vite build --sourcemap",
+  "framework": "vite"
+}
