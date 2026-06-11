@@ -374,7 +374,7 @@ const DailyReadingDashboard = () => {
             </div>
 
             {/* Quick Access Group Chat Banner */}
-            {planContext === 'group' && (
+            {planContext === 'group' && groupData?.isChatEnabled !== false && (
               <div className="mb-6 animate-fade-in max-w-sm">
                 <button
                   onClick={() => handleOpenGroupDetails('discussion')}
@@ -486,14 +486,6 @@ const DailyReadingDashboard = () => {
         ) : (
           /* ── Plan active ── */
           <>
-            {latestMilestone && (
-              <FadeIn delay={0.15}>
-                <div className="mb-8">
-                  <MilestoneCard milestone={latestMilestone} />
-                </div>
-              </FadeIn>
-            )}
-
             <FadeIn delay={0.2}>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                 <div className="lg:col-span-2 space-y-6 md:space-y-8">
@@ -514,7 +506,13 @@ const DailyReadingDashboard = () => {
                   <div className="bg-card rounded-2xl border border-border p-5 md:p-6">
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-lg font-heading font-semibold text-foreground">Plan Details</h2>
-                      <Icon name="Info" size={18} className="text-muted-foreground" />
+                      <button 
+                        onClick={() => setShowTimelineModal(true)}
+                        className="text-muted-foreground hover:text-accent transition-colors focus:outline-none"
+                        title="View reading timeline"
+                      >
+                        <Icon name="Info" size={18} />
+                      </button>
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-5">
                       {[
@@ -541,7 +539,7 @@ const DailyReadingDashboard = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleOpenGroupDetails('settings')}
+                        onClick={() => handleOpenGroupDetails('info')}
                         className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold border border-accent/25 bg-accent/5 text-accent hover:bg-accent/10 transition-all duration-200 flex items-center justify-center gap-2"
                       >
                         <Icon name="Users" size={16} />
@@ -557,6 +555,9 @@ const DailyReadingDashboard = () => {
                     progressStats={progressStats} 
                     onClick={planContext === 'group' ? () => handleOpenGroupDetails('members') : null}
                   />
+                  {latestMilestone && (
+                    <MilestoneCard milestone={latestMilestone} />
+                  )}
                   <UpcomingAssignments 
                     upcomingDays={upcomingDays} 
                     onViewTimeline={() => setShowTimelineModal(true)}

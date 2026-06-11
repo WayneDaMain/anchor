@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Sync user doc / timezone
+        await ensureUserDoc(user);
         // Fetch additional user data from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -59,14 +61,54 @@ export const AuthProvider = ({ children }) => {
     try {
       const userRef = doc(db, 'users', user.uid);
       const snap = await getDoc(userRef);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const defaultSettings = {
+        email: user.email,
+        timezone: tz,
+        emailSettings: {
+          morningReminders: true,
+          streakWarnings: true,
+          morningHour: 7,
+          warningHour: 21
+        }
+      };
       if (!snap.exists()) {
         await setDoc(userRef, {
           fullName: user.displayName || extraData.fullName || '',
           email: user.email,
           photoURL: user.photoURL || null,
           createdAt: new Date().toISOString(),
+          ...defaultSettings,
           ...extraData,
         });
+
+        // Trigger welcome email via Cloudflare Worker API
+        try {
+          fetch('https://anchor-email-worker.emaxstone12.workers.dev/welcome', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: user.email,
+              name: user.displayName || extraData.fullName || 'there'
+            })
+          });
+        } catch (emailErr) {
+          console.warn('Failed to send welcome email:', emailErr.message);
+        }
+      } else {
+        // Update timezone and ensure emailSettings structure exists
+        const existingData = snap.data();
+        await setDoc(userRef, {
+          timezone: tz,
+          emailSettings: {
+            morningReminders: existingData.emailSettings?.morningReminders !== false,
+            streakWarnings: existingData.emailSettings?.streakWarnings !== false,
+            morningHour: existingData.emailSettings?.morningHour || 7,
+            warningHour: existingData.emailSettings?.warningHour || 21
+          }
+        }, { merge: true });
       }
     } catch (err) {
       // Firestore offline — auth still succeeded, doc will be created on next online session

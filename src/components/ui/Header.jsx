@@ -48,6 +48,11 @@ const Header = () => {
     return name.charAt(0).toUpperCase() + '.';
   };
 
+  const toggleTheme = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  };
+
   return (
     <>
       <header className="fixed top-4 left-4 right-4 z-navigation max-w-7xl mx-auto bg-card/90 backdrop-blur-md border border-border/80 rounded-full shadow-lg">
@@ -127,7 +132,7 @@ const Header = () => {
                           className="flex items-center space-x-3 px-4 py-2.5 w-full text-left hover:bg-muted transition-gentle text-sm font-medium"
                           onClick={() => {
                             setUserMenuOpen(false);
-                            document.documentElement?.classList?.toggle('dark');
+                            toggleTheme();
                           }}
                         >
                           <Icon name="Moon" size={16} />
@@ -206,7 +211,7 @@ const Header = () => {
                 <button
                   className="flex items-center space-x-3 px-4 py-3 w-full text-left rounded-xl hover:bg-muted transition-gentle text-sm font-semibold text-foreground"
                   onClick={() => {
-                    document.documentElement?.classList?.toggle('dark');
+                    toggleTheme();
                     setMobileMenuOpen(false);
                   }}
                 >

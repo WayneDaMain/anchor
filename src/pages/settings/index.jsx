@@ -23,6 +23,87 @@ const Settings = () => {
   const [displayName, setDisplayName] = useState(currentUser?.fullName || currentUser?.displayName || '');
   const [nameSaved, setNameSaved] = useState(false);
 
+  // Email Notification settings
+  const [morningReminders, setMorningReminders] = useState(currentUser?.emailSettings?.morningReminders !== false);
+  const [streakWarnings, setStreakWarnings] = useState(currentUser?.emailSettings?.streakWarnings !== false);
+  const [morningHour, setMorningHour] = useState(currentUser?.emailSettings?.morningHour || 7);
+  const [warningHour, setWarningHour] = useState(currentUser?.emailSettings?.warningHour || 21);
+
+  useEffect(() => {
+    if (currentUser?.emailSettings) {
+      setMorningReminders(currentUser.emailSettings.morningReminders !== false);
+      setStreakWarnings(currentUser.emailSettings.streakWarnings !== false);
+      setMorningHour(currentUser.emailSettings.morningHour || 7);
+      setWarningHour(currentUser.emailSettings.warningHour || 21);
+    }
+  }, [currentUser?.emailSettings]);
+
+  const handleToggleMorning = async (val) => {
+    setMorningReminders(val);
+    try {
+      await updateUserProfile({
+        emailSettings: {
+          morningReminders: val,
+          streakWarnings,
+          morningHour,
+          warningHour
+        }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleStreak = async (val) => {
+    setStreakWarnings(val);
+    try {
+      await updateUserProfile({
+        emailSettings: {
+          morningReminders,
+          streakWarnings: val,
+          morningHour,
+          warningHour
+        }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMorningHourChange = async (e) => {
+    const hr = parseInt(e.target.value);
+    setMorningHour(hr);
+    try {
+      await updateUserProfile({
+        emailSettings: {
+          morningReminders,
+          streakWarnings,
+          morningHour: hr,
+          warningHour
+        }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleWarningHourChange = async (e) => {
+    const hr = parseInt(e.target.value);
+    setWarningHour(hr);
+    try {
+      await updateUserProfile({
+        emailSettings: {
+          morningReminders,
+          streakWarnings,
+          morningHour,
+          warningHour: hr
+        }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     document.title = 'Settings — Anchor';
   }, []);
@@ -171,6 +252,90 @@ const Settings = () => {
                     className="w-full px-3 py-2 border border-border rounded-lg bg-muted/50 text-muted-foreground text-sm cursor-not-allowed"
                   />
                   <p className="text-xs text-muted-foreground mt-1.5">Email cannot be changed</p>
+                </div>
+              </div>
+            </section>
+          </FadeIn>
+
+          {/* ── Email Notifications ── */}
+          <FadeIn delay={0.22}>
+            <section className="bg-card rounded-2xl border border-border p-6 space-y-5">
+              <h2 className="text-lg font-heading font-semibold text-foreground">Email Notifications</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Timezone detected: <strong className="text-foreground">{currentUser?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}</strong></p>
+              
+              <div className="space-y-4">
+                {/* Morning Reminder Toggle */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <span className="text-sm font-semibold text-foreground block">Morning Daily Bread Alert</span>
+                    <span className="text-xs text-muted-foreground">Receive your assigned Bible chapters directly in your inbox to start the day.</span>
+                    {morningReminders && (
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Delivery time:</span>
+                        <select
+                          value={morningHour}
+                          onChange={handleMorningHourChange}
+                          className="px-2.5 py-1 border border-border rounded-lg bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>
+                              {i === 0 ? '12:00 AM' : i === 12 ? '12:00 PM' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggleMorning(!morningReminders)}
+                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${
+                      morningReminders ? 'bg-accent' : 'bg-muted border border-border'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${
+                        morningReminders ? 'ml-auto' : 'ml-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="border-t border-border/80 my-3" />
+
+                {/* Evening Streak Reminder Toggle */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <span className="text-sm font-semibold text-foreground block">Evening Streak Warning</span>
+                    <span className="text-xs text-muted-foreground">Get alerted if you are at risk of breaking your reading streak.</span>
+                    {streakWarnings && (
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Delivery time:</span>
+                        <select
+                          value={warningHour}
+                          onChange={handleWarningHourChange}
+                          className="px-2.5 py-1 border border-border rounded-lg bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>
+                              {i === 0 ? '12:00 AM' : i === 12 ? '12:00 PM' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggleStreak(!streakWarnings)}
+                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${
+                      streakWarnings ? 'bg-accent' : 'bg-muted border border-border'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${
+                        streakWarnings ? 'ml-auto' : 'ml-0'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </section>

@@ -17,11 +17,11 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
   // Extract initials of active plan name
   const planInitials = planData?.name
     ? planData.name
-        .split(' ')
-        .map(w => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
     : 'PR';
 
   const stats = [
@@ -34,26 +34,25 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className={`bg-white border border-slate-200/80 rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden transition-all duration-300 hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] ${
-        onClick
-          ? 'cursor-pointer hover:border-slate-400 active:scale-[0.99] select-none'
+      className={`bg-card border border-border rounded-2xl p-6 shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md hover:border-border/80 ${onClick
+          ? 'cursor-pointer active:scale-[0.99] select-none'
           : 'select-none'
-      }`}
+        }`}
     >
       {/* Accent glow on hover */}
-      <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-slate-50 blur-2xl pointer-events-none" />
+      <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-slate-50 dark:bg-zinc-900/40 blur-2xl pointer-events-none" />
 
       {/* Card Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold font-sans tracking-wide">
+          <div className="w-8 h-8 rounded-full bg-[#1c142c] text-white dark:bg-[#7c3aed] flex items-center justify-center text-xs font-bold tracking-wide">
             {planInitials}
           </div>
           <div>
-            <span className="text-xs font-bold text-slate-900 block leading-tight">
+            <span className="text-xs font-extrabold text-foreground block leading-tight">
               {planData?.name || 'Active Plan'}
             </span>
-            <span className="text-[10px] text-slate-400 block font-normal leading-tight">
+            <span className="text-[10px] text-muted-foreground block font-medium leading-tight">
               Overall Progress
             </span>
           </div>
@@ -61,30 +60,24 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
 
         {/* Streak Badge */}
         <div
-          className={`border px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 transition-all duration-200 ${
-            currentStreak > 0
-              ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-              : 'bg-slate-50 border-slate-100 text-slate-500'
-          }`}
+          className={`border px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 transition-all duration-200 ${currentStreak > 0
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400'
+              : 'bg-muted border-border text-muted-foreground'
+            }`}
         >
-          <Icon
-            name="Zap"
-            size={10}
-            className={currentStreak > 0 ? 'text-emerald-500 fill-emerald-500' : 'text-slate-400'}
-          />
           <span>Streak: {currentStreak}d</span>
         </div>
       </div>
 
-      <div className="border-b border-slate-100 my-4" />
+      <div className="border-b border-border my-4" />
 
       {/* Card Body */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase block">
+          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase block">
             Plan Progress
           </span>
-          <span className="text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight block">
+          <span className="text-3xl font-extrabold text-foreground mt-0.5 tracking-tight block">
             {progressPercentage}%
           </span>
         </div>
@@ -96,7 +89,7 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
               cx="32"
               cy="32"
               r="26"
-              className="stroke-slate-100"
+              className="stroke-muted/40 dark:stroke-zinc-800"
               strokeWidth="3.5"
               fill="transparent"
             />
@@ -104,7 +97,7 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
               cx="32"
               cy="32"
               r="26"
-              className="stroke-slate-900"
+              className="stroke-slate-900 dark:stroke-accent"
               strokeWidth="3.5"
               fill="transparent"
               strokeDasharray={strokeDasharray}
@@ -113,24 +106,24 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
               transition={{ type: 'spring', stiffness: 90, damping: 15 }}
             />
           </svg>
-          <div className="absolute text-xs font-bold text-slate-900 tracking-tighter">
+          <div className="absolute text-xs font-bold text-foreground tracking-tighter">
             {progressPercentage}%
           </div>
         </div>
       </div>
 
       {/* Progress meter bar */}
-      <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3">
-        <div className="flex items-center justify-between text-2xs text-slate-400 font-medium">
+      <div className="mt-4 bg-muted/30 border border-border/60 rounded-xl p-3">
+        <div className="flex items-center justify-between text-2xs text-muted-foreground font-semibold">
           <span>COMPLETION</span>
           <span>
             {progressStats?.daysCompleted || 0} of {planData?.totalDays || 0} days
           </span>
         </div>
 
-        <div className="w-full h-1 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
+        <div className="w-full h-1.5 bg-muted rounded-full mt-1.5 overflow-hidden">
           <motion.div
-            className="h-full bg-slate-900"
+            className="h-full bg-slate-900 dark:bg-accent"
             initial={{ width: 0 }}
             animate={{ width: `${progressPercentage}%` }}
             transition={{ type: 'spring', stiffness: 80, damping: 15 }}
@@ -140,7 +133,7 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
 
       {/* Checklist Stats */}
       <div className="mt-5 space-y-2">
-        <div className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+        <div className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
           Plan Breakdown
         </div>
 
@@ -149,13 +142,13 @@ const ProgressOverview = ({ planData, progressStats, onClick }) => {
             key={i}
             className="flex items-center gap-3 py-1 text-sm transition-all duration-200 hover:translate-x-0.5 group"
           >
-            <div className="w-5 h-5 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:border-slate-800 group-hover:text-slate-800 transition-colors">
+            <div className="w-5 h-5 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground flex-shrink-0 group-hover:border-foreground group-hover:text-foreground transition-colors">
               <Icon name={stat.icon} size={11} strokeWidth={2.5} />
             </div>
-            <span className="font-medium text-slate-500 group-hover:text-slate-700 transition-colors">
+            <span className="font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
               {stat.label}
             </span>
-            <span className="text-slate-800 font-bold ml-auto">{stat.value}</span>
+            <span className="text-foreground font-bold ml-auto">{stat.value}</span>
           </div>
         ))}
       </div>

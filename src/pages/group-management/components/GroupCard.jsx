@@ -5,9 +5,41 @@ import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 
 const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
+  const [shareCopied, setShareCopied] = React.useState(false);
+
   const progressPercentage = group?.totalChapters
     ? Math.round((group?.completedChapters / group?.totalChapters) * 100)
     : 0;
+
+  const handleShare = async (e) => {
+    e.stopPropagation();
+    const shareText = `Join my Bible reading group "${group?.name}" on Anchor! Invite Code: ${group?.inviteCode}`;
+    const shareData = {
+      title: 'Join Anchor Bible Reading Group',
+      text: shareText,
+      url: window.location.origin
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          copyToClipboard(shareText);
+        }
+      }
+    } else {
+      copyToClipboard(shareText);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
 
   return (
     <motion.div
@@ -27,8 +59,13 @@ const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Icon name="Users" size={36} className="text-accent/40" />
+          <div className="w-full h-full relative overflow-hidden flex items-center justify-center bg-zinc-50 dark:bg-zinc-900/40">
+            {/* Crisp, Beautifully Faded Large Anchor Logo */}
+            <img 
+              src="/anchor.png" 
+              alt="" 
+              className="w-20 h-20 object-contain opacity-25 dark:opacity-15 transition-transform duration-500 group-hover:scale-105"
+            />
           </div>
         )}
         {/* Gradient overlay */}
@@ -58,15 +95,10 @@ const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
         </p>
 
         {/* Meta row */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1.5 rounded-lg">
-            <Icon name="BookOpen" size={12} className="text-accent" />
-            <span className="font-medium text-foreground">{group?.planName}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1.5 rounded-lg">
-            <Icon name="Calendar" size={12} className="text-primary" />
-            <span className="font-medium text-foreground">{group?.duration}</span>
-          </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+          <span className="font-medium text-foreground">{group?.planName}</span>
+          <span className="text-muted-foreground/60">•</span>
+          <span className="font-medium text-foreground">{group?.duration}</span>
         </div>
 
         {/* Progress */}
@@ -96,6 +128,13 @@ const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
           >
             View Details
           </Button>
+          <button
+            onClick={handleShare}
+            className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all flex-shrink-0"
+            title="Share group code"
+          >
+            <Icon name={shareCopied ? "Check" : "Share2"} size={15} className={shareCopied ? "text-emerald-500" : ""} />
+          </button>
           {!group?.isAdmin && (
             <button
               onClick={() => onLeaveGroup(group?.id)}

@@ -338,6 +338,7 @@ const GroupManagement = () => {
                     <DiscoverGroupCard
                       key={group?.id}
                       group={group}
+                      isJoined={currentUser?.activeGroupId === group.id}
                       onJoinGroup={handleJoinGroup}
                     />
                   ))}
