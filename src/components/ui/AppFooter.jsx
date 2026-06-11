@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 const AppFooter = () => {
   const currentYear = new Date().getFullYear();
+  const isNative = Capacitor.isNativePlatform();
 
-  const legalLinks = [
+  const footerLinks = [
+    ...(isNative ? [] : [{ label: 'Download Anchor App', path: '/Anchor.apk', download: true }]),
     { label: 'Contact', path: '/contact' },
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms of Service', path: '/terms' },
@@ -37,16 +40,27 @@ const AppFooter = () => {
             <span className="text-base font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
           </Link>
 
-          {/* Legal Links */}
+          {/* Footer Links */}
           <div className="flex items-center gap-5">
-            {legalLinks.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link.label}
-              </Link>
+            {footerLinks.map(link => (
+              link.download ? (
+                <a
+                  key={link.path}
+                  href={link.path}
+                  download
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </div>
         </div>

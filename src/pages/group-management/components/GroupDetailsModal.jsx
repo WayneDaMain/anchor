@@ -23,6 +23,16 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [shareCopied, setShareCopied] = useState(false);
+  const [editedGroupName, setEditedGroupName] = useState(group?.name || '');
+  const [editedDescription, setEditedDescription] = useState(group?.description || '');
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+
+  useEffect(() => {
+    if (currentGroup) {
+      setEditedGroupName(currentGroup.name || '');
+      setEditedDescription(currentGroup.description || '');
+    }
+  }, [currentGroup?.id]);
 
   const [groupPhotoUploading, setGroupPhotoUploading] = useState(false);
   const groupFileRef = useRef(null);
@@ -45,6 +55,23 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     } catch (err) {
       console.error("Failed to delete group:", err);
       alert("Failed to delete group. Please try again.");
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    if (!editedGroupName.trim()) return;
+    setIsSavingDetails(true);
+    try {
+      const groupDocRef = doc(db, 'groups', currentGroup.id);
+      await updateDoc(groupDocRef, {
+        name: editedGroupName.trim(),
+        description: editedDescription.trim()
+      });
+    } catch (err) {
+      console.error("Failed to update group details:", err);
+      alert("Failed to update group details. Please try again.");
+    } finally {
+      setIsSavingDetails(false);
     }
   };
 
@@ -325,10 +352,52 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-bold text-foreground mb-1">About the Group</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{currentGroup?.description}</p>
-                </div>
+                {currentGroup?.creatorId === currentUser?.uid ? (
+                  <div className="space-y-4 border border-border/60 bg-muted/10 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Edit Group Details</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Group Name</label>
+                        <input
+                          type="text"
+                          value={editedGroupName}
+                          onChange={(e) => setEditedGroupName(e.target.value)}
+                          placeholder="Enter group name..."
+                          className="w-full bg-background border border-border rounded-xl px-3.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Group Description</label>
+                        <textarea
+                          value={editedDescription}
+                          onChange={(e) => setEditedDescription(e.target.value)}
+                          placeholder="Describe your group..."
+                          rows={3}
+                          className="w-full bg-background border border-border rounded-xl px-3.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                        />
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <button
+                          onClick={handleSaveDetails}
+                          disabled={isSavingDetails || !editedGroupName.trim() || (editedGroupName.trim() === currentGroup.name && editedDescription.trim() === (currentGroup.description || ''))}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-accent text-accent-foreground font-semibold text-xs hover:bg-accent/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                        >
+                          {isSavingDetails ? (
+                            <div className="w-3.5 h-3.5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                          ) : (
+                            <Icon name="Check" size={14} />
+                          )}
+                          <span>Save Changes</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground mb-1">About the Group</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{currentGroup?.description || 'No description provided.'}</p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
@@ -407,6 +476,8 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                         />
                       </button>
                     </div>
+
+
 
                     <div className="border-t border-border pt-4">
                       <button

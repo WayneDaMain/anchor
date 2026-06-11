@@ -1,14 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import Icon from '../../../components/AppIcon';
 
 const Footer = () => {
   const currentYear = new Date()?.getFullYear();
+  const isNative = Capacitor.isNativePlatform();
 
   const footerLinks = {
     product: [
       { label: 'Features', path: '/landing-page#features' },
       { label: 'Reading Plans', path: '/plan-creation-wizard' },
+      ...(isNative ? [] : [{ label: 'Download Anchor', path: '/Anchor.apk', download: true }]),
     ],
     company: [
       { label: 'About Us', path: '/about' },
@@ -59,7 +62,15 @@ const Footer = () => {
             <ul className="space-y-2 md:space-y-3">
               {footerLinks?.product?.map((link) => (
                 <li key={link?.label}>
-                  {link.path.includes('#') ? (
+                  {link.download ? (
+                    <a
+                      href={link.path}
+                      download
+                      className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
+                    >
+                      {link?.label}
+                    </a>
+                  ) : link.path.includes('#') ? (
                     <a
                       href={link.path}
                       className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
