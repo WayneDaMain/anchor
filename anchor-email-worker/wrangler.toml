@@ -7,5 +7,4 @@ crons = ["0 * * * *"]
 
 [vars]
 FIREBASE_PROJECT_ID = "anchor-b8fe6"
-RESEND_API_KEY = "re_YpBjf5Ca_MsZtyh5Tg8SvUjPpv1PfKe9y"
 ONESIGNAL_APP_ID = "5b4c867b-da23-4cfb-a96b-68264cd7b09b"

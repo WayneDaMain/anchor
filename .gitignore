@@ -11,3 +11,8 @@ vite.config.*s.*
 # Android signing
 android/key.properties
 android/app/release.keystore
+
+# Cloudflare Wrangler local secrets
+.dev.vars
+**/anchor-email-worker/.dev.vars
+
