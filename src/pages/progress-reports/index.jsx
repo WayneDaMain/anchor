@@ -32,7 +32,8 @@ const ProgressReports = () => {
         },
         body: JSON.stringify({
           email: currentUser.email,
-          userId: currentUser.uid
+          userId: currentUser.uid,
+          name: currentUser.fullName || currentUser.displayName || ''
         })
       });
       if (response.ok) {

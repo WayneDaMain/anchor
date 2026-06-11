@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         // Update timezone and ensure emailSettings structure exists
         const existingData = snap.data();
-        await setDoc(userRef, {
+        const updatePayload = {
           timezone: tz,
           emailSettings: {
             morningReminders: existingData.emailSettings?.morningReminders !== false,
@@ -108,7 +108,17 @@ export const AuthProvider = ({ children }) => {
             morningHour: existingData.emailSettings?.morningHour || 7,
             warningHour: existingData.emailSettings?.warningHour || 21
           }
-        }, { merge: true });
+        };
+
+        // Self-heal missing/empty email or fullName fields in Firestore
+        if (!existingData.email && user.email) {
+          updatePayload.email = user.email;
+        }
+        if ((!existingData.fullName || existingData.fullName === '') && (user.displayName || extraData.fullName)) {
+          updatePayload.fullName = user.displayName || extraData.fullName;
+        }
+
+        await setDoc(userRef, updatePayload, { merge: true });
       }
     } catch (err) {
       // Firestore offline — auth still succeeded, doc will be created on next online session
