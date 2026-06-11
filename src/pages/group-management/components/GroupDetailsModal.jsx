@@ -26,6 +26,7 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const [editedGroupName, setEditedGroupName] = useState(group?.name || '');
   const [editedDescription, setEditedDescription] = useState(group?.description || '');
   const [isSavingDetails, setIsSavingDetails] = useState(false);
+  const [isTogglingPrivacy, setIsTogglingPrivacy] = useState(false);
 
   useEffect(() => {
     if (currentGroup) {
@@ -275,8 +276,15 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                 <h2 className="text-lg font-heading font-extrabold text-foreground">
                   {currentGroup?.name}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {currentGroup?.planName} · Code: <strong className="text-accent tracking-wider">{currentGroup?.inviteCode}</strong>
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span>{currentGroup?.planName}</span>
+                  <span>·</span>
+                  <span>Code: <strong className="text-accent tracking-wider">{currentGroup?.inviteCode}</strong></span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1 border border-border/50 bg-muted/30 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                    <Icon name={currentGroup?.isPrivate ? "Lock" : "Unlock"} size={10} className={currentGroup?.isPrivate ? "text-amber-500" : "text-emerald-500"} />
+                    <span>{currentGroup?.isPrivate ? "Private" : "Public"}</span>
+                  </span>
                 </p>
               </div>
             </div>
@@ -472,6 +480,70 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                           layout
                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
                           className={`w-5 h-5 rounded-full shadow-sm bg-white ${currentGroup?.isChatEnabled !== false ? 'ml-auto' : 'ml-0'
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-border pt-4">
+                      <div>
+                        <span className="text-xs font-bold text-foreground block">Private Group</span>
+                        <span className="text-[10px] text-muted-foreground">Private groups require an invite code to join and are hidden from discovery.</span>
+                      </div>
+                      <button
+                        disabled={isTogglingPrivacy}
+                        onClick={async () => {
+                          if (isTogglingPrivacy) return;
+                          setIsTogglingPrivacy(true);
+                          try {
+                            const isPrivate = currentGroup?.isPrivate === true;
+                            const newPrivacy = !isPrivate;
+                            const groupDocRef = doc(db, 'groups', currentGroup.id);
+                            
+                            // Update Firestore
+                            await updateDoc(groupDocRef, { isPrivate: newPrivacy });
+
+                            // Add chat message
+                            const messageText = `changed the group privacy to ${newPrivacy ? 'Private (Invite Only)' : 'Public'}`;
+                            await addDoc(collection(db, 'groups', currentGroup.id, 'messages'), {
+                              senderId: currentUser.uid,
+                              senderName: currentUser.displayName || currentUser.email.split('@')[0],
+                              senderPhoto: currentUser.photoURL || null,
+                              text: messageText,
+                              timestamp: new Date().toISOString()
+                            });
+
+                            // Trigger push notifications via worker
+                            try {
+                              await fetch('https://anchor-email-worker.emaxstone12.workers.dev/group-message-notification', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                  groupId: currentGroup.id,
+                                  groupName: currentGroup.name,
+                                  senderId: currentUser.uid,
+                                  senderName: currentUser.displayName || currentUser.email.split('@')[0],
+                                  text: messageText
+                                })
+                              });
+                            } catch (pushErr) {
+                              console.warn('Failed to trigger group message push notification:', pushErr);
+                            }
+                          } catch (err) {
+                            console.error("Failed to toggle privacy:", err);
+                          } finally {
+                            setIsTogglingPrivacy(false);
+                          }
+                        }}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center ${isTogglingPrivacy ? 'opacity-50 cursor-not-allowed' : ''} ${currentGroup?.isPrivate ? 'bg-accent' : 'bg-muted border border-border'
+                          }`}
+                      >
+                        <motion.div
+                          layout
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          className={`w-5 h-5 rounded-full shadow-sm bg-white ${currentGroup?.isPrivate ? 'ml-auto' : 'ml-0'
                             }`}
                         />
                       </button>
