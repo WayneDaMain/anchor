@@ -64,18 +64,19 @@ const DiscoverGroupCard = ({ group, onJoinGroup, isJoined }) => {
             />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Private badge */}
         {group?.isPrivate && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-card/90 backdrop-blur-sm text-xs font-bold text-foreground rounded-full">
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/50 backdrop-blur-md border border-white/10 text-xs font-bold text-white rounded-full shadow-sm">
             Private
           </div>
         )}
 
         {/* Member count pill */}
-        <div className="absolute bottom-3 left-4 flex items-center gap-1.5 px-2.5 py-1 bg-card/90 backdrop-blur-sm rounded-full text-xs font-semibold text-foreground">
-          {group?.memberCount} members
+        <div className="absolute bottom-3 left-4 flex items-center gap-1.5 px-2.5 py-1 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-xs font-semibold text-white shadow-sm">
+          <Icon name="Users" size={12} className="text-accent" />
+          <span>{group?.memberCount} members</span>
         </div>
       </div>
 

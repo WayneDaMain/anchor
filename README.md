@@ -1,6 +1,6 @@
 # Anchor — Bible Reading Tracker
 
-> A structured, social Bible reading companion. Build personal plans, join group fellowships, track progress, and read the Bible — all in one place.
+> A structured, social Bible reading companion. Build personal plans, join groups, track progress, and read the Bible — all in one place.
 
 **Part of the [Scriptura](https://biblescriptura.com) ecosystem** · [Folio](https://folio.biblescriptura.com) · [Read Bible](https://web.biblescriptura.com)
 

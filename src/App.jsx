@@ -3,6 +3,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Routes from "./Routes";
 import AppPromo from "./components/AppPromo";
 import OfflineBanner from "./components/ui/OfflineBanner";
+import AppUpdater from "./components/ui/AppUpdater";
 import OneSignal from "@onesignal/capacitor-plugin";
 import { Capacitor } from "@capacitor/core";
 
@@ -26,6 +27,7 @@ function App() {
       <Routes />
       <AppPromo />
       <OfflineBanner />
+      <AppUpdater />
     </AuthProvider>
   );
 }

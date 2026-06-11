@@ -185,7 +185,7 @@ const Settings = () => {
   return (
     <PageTransition className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-12 pb-20 md:pb-8">
+      <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-12 pb-20 md:pb-8">
         <FadeIn delay={0.1}>
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-1">Settings</h1>
@@ -197,9 +197,9 @@ const Settings = () => {
 
           {/* ── Profile Photo ── */}
           <FadeIn delay={0.15}>
-            <section className="bg-card rounded-2xl border border-border p-6">
+            <section className="bg-card rounded-2xl border border-border p-4 sm:p-6">
               <h2 className="text-lg font-heading font-semibold text-foreground mb-5">Profile Photo</h2>
-              <div className="flex items-center gap-5">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 text-center sm:text-left">
                 <div className="relative">
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-muted border-2 border-border flex items-center justify-center">
                     {currentUser?.photoURL ? (
@@ -245,7 +245,7 @@ const Settings = () => {
 
           {/* ── Personal Info ── */}
           <FadeIn delay={0.2}>
-            <section className="bg-card rounded-2xl border border-border p-6">
+            <section className="bg-card rounded-2xl border border-border p-4 sm:p-6">
               <h2 className="text-lg font-heading font-semibold text-foreground mb-5">Personal Info</h2>
               <div className="space-y-4">
                 <div>
@@ -255,7 +255,7 @@ const Settings = () => {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="flex-1 min-w-0 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                       placeholder="Your name"
                     />
                     <Button
@@ -284,10 +284,10 @@ const Settings = () => {
 
           {/* ── Email Notifications ── */}
           <FadeIn delay={0.22}>
-            <section className="bg-card rounded-2xl border border-border p-6 space-y-5">
+            <section className="bg-card rounded-2xl border border-border p-4 sm:p-6 space-y-5">
               <h2 className="text-lg font-heading font-semibold text-foreground">Email Notifications</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Timezone detected: <strong className="text-foreground">{currentUser?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}</strong></p>
-              
+
               <div className="space-y-4">
                 {/* Morning Reminder Toggle */}
                 <div className="flex items-start justify-between gap-4">
@@ -300,7 +300,7 @@ const Settings = () => {
                           <Icon name="Clock" size={12} />
                           <span>Delivery time:</span>
                         </span>
-                        
+
                         <div className="flex items-center gap-1 bg-muted/40 p-1 border border-border rounded-xl">
                           {/* Hour Selector */}
                           <div className="relative" ref={morningPickerRef}>
@@ -312,18 +312,18 @@ const Settings = () => {
                               <span>{morningHour === 0 || morningHour === 12 ? 12 : morningHour > 12 ? morningHour - 12 : morningHour}:00</span>
                               <Icon name="ChevronDown" size={10} className={`text-muted-foreground transition-transform ${showMorningPicker ? 'rotate-180' : ''}`} />
                             </button>
-                            
+
                             {showMorningPicker && (
                               <div className="absolute left-0 mt-1.5 w-24 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg z-50 py-1 scrollbar-none animate-in fade-in slide-in-from-top-1 duration-150">
                                 {Array.from({ length: 12 }, (_, i) => {
                                   const displayHr = i + 1; // 1 to 12
                                   const isPm = morningHour >= 12;
-                                  const targetH = isPm 
+                                  const targetH = isPm
                                     ? (displayHr === 12 ? 12 : displayHr + 12)
                                     : (displayHr === 12 ? 0 : displayHr);
-                                    
+
                                   const isSelected = (morningHour === 0 || morningHour === 12 ? 12 : morningHour > 12 ? morningHour - 12 : morningHour) === displayHr;
-                                  
+
                                   return (
                                     <button
                                       key={displayHr}
@@ -332,9 +332,8 @@ const Settings = () => {
                                         handleMorningHourChange(targetH);
                                         setShowMorningPicker(false);
                                       }}
-                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${
-                                        isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
-                                      }`}
+                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
+                                        }`}
                                     >
                                       {displayHr}:00
                                     </button>
@@ -356,11 +355,10 @@ const Settings = () => {
                                   handleMorningHourChange(morningHour === 12 ? 0 : morningHour - 12);
                                 }
                               }}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
-                                morningHour < 12 
-                                  ? 'bg-card text-foreground shadow-sm' 
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${morningHour < 12
+                                  ? 'bg-card text-foreground shadow-sm'
                                   : 'text-muted-foreground hover:text-foreground'
-                              }`}
+                                }`}
                             >
                               AM
                             </button>
@@ -371,11 +369,10 @@ const Settings = () => {
                                   handleMorningHourChange(morningHour === 0 ? 12 : morningHour + 12);
                                 }
                               }}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
-                                morningHour >= 12 
-                                  ? 'bg-card text-foreground shadow-sm' 
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${morningHour >= 12
+                                  ? 'bg-card text-foreground shadow-sm'
                                   : 'text-muted-foreground hover:text-foreground'
-                              }`}
+                                }`}
                             >
                               PM
                             </button>
@@ -386,14 +383,12 @@ const Settings = () => {
                   </div>
                   <button
                     onClick={() => handleToggleMorning(!morningReminders)}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${
-                      morningReminders ? 'bg-accent' : 'bg-muted border border-border'
-                    }`}
+                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${morningReminders ? 'bg-accent' : 'bg-muted border border-border'
+                      }`}
                   >
                     <div
-                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${
-                        morningReminders ? 'ml-auto' : 'ml-0'
-                      }`}
+                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${morningReminders ? 'ml-auto' : 'ml-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -411,7 +406,7 @@ const Settings = () => {
                           <Icon name="Clock" size={12} />
                           <span>Delivery time:</span>
                         </span>
-                        
+
                         <div className="flex items-center gap-1 bg-muted/40 p-1 border border-border rounded-xl">
                           {/* Hour Selector */}
                           <div className="relative" ref={warningPickerRef}>
@@ -423,18 +418,18 @@ const Settings = () => {
                               <span>{warningHour === 0 || warningHour === 12 ? 12 : warningHour > 12 ? warningHour - 12 : warningHour}:00</span>
                               <Icon name="ChevronDown" size={10} className={`text-muted-foreground transition-transform ${showWarningPicker ? 'rotate-180' : ''}`} />
                             </button>
-                            
+
                             {showWarningPicker && (
                               <div className="absolute left-0 mt-1.5 w-24 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg z-50 py-1 scrollbar-none animate-in fade-in slide-in-from-top-1 duration-150">
                                 {Array.from({ length: 12 }, (_, i) => {
                                   const displayHr = i + 1; // 1 to 12
                                   const isPm = warningHour >= 12;
-                                  const targetH = isPm 
+                                  const targetH = isPm
                                     ? (displayHr === 12 ? 12 : displayHr + 12)
                                     : (displayHr === 12 ? 0 : displayHr);
-                                    
+
                                   const isSelected = (warningHour === 0 || warningHour === 12 ? 12 : warningHour > 12 ? warningHour - 12 : warningHour) === displayHr;
-                                  
+
                                   return (
                                     <button
                                       key={displayHr}
@@ -443,9 +438,8 @@ const Settings = () => {
                                         handleWarningHourChange(targetH);
                                         setShowWarningPicker(false);
                                       }}
-                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${
-                                        isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
-                                      }`}
+                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
+                                        }`}
                                     >
                                       {displayHr}:00
                                     </button>
@@ -467,11 +461,10 @@ const Settings = () => {
                                   handleWarningHourChange(warningHour === 12 ? 0 : warningHour - 12);
                                 }
                               }}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
-                                warningHour < 12 
-                                  ? 'bg-card text-foreground shadow-sm' 
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${warningHour < 12
+                                  ? 'bg-card text-foreground shadow-sm'
                                   : 'text-muted-foreground hover:text-foreground'
-                              }`}
+                                }`}
                             >
                               AM
                             </button>
@@ -482,11 +475,10 @@ const Settings = () => {
                                   handleWarningHourChange(warningHour === 0 ? 12 : warningHour + 12);
                                 }
                               }}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
-                                warningHour >= 12 
-                                  ? 'bg-card text-foreground shadow-sm' 
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${warningHour >= 12
+                                  ? 'bg-card text-foreground shadow-sm'
                                   : 'text-muted-foreground hover:text-foreground'
-                              }`}
+                                }`}
                             >
                               PM
                             </button>
@@ -497,14 +489,12 @@ const Settings = () => {
                   </div>
                   <button
                     onClick={() => handleToggleStreak(!streakWarnings)}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${
-                      streakWarnings ? 'bg-accent' : 'bg-muted border border-border'
-                    }`}
+                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex items-center flex-shrink-0 ${streakWarnings ? 'bg-accent' : 'bg-muted border border-border'
+                      }`}
                   >
                     <div
-                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${
-                        streakWarnings ? 'ml-auto' : 'ml-0'
-                      }`}
+                      className={`w-5 h-5 rounded-full shadow-sm bg-white transition-all duration-200 ${streakWarnings ? 'ml-auto' : 'ml-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -514,7 +504,7 @@ const Settings = () => {
 
           {/* ── Account ── */}
           <FadeIn delay={0.25}>
-            <section className="bg-card rounded-2xl border border-border p-6">
+            <section className="bg-card rounded-2xl border border-border p-4 sm:p-6">
               <h2 className="text-lg font-heading font-semibold text-foreground mb-5">Account</h2>
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2">
@@ -544,31 +534,29 @@ const Settings = () => {
 
           {/* ── Danger Zone ── */}
           <FadeIn delay={0.3}>
-            <section className="bg-card rounded-2xl border border-red-200 p-6">
-              <h2 className="text-lg font-heading font-semibold text-red-600 mb-4">Danger Zone</h2>
+            <section className="bg-card rounded-2xl border border-red-200 p-4 sm:p-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Sign Out</p>
                     <p className="text-xs text-muted-foreground">Log out of your account on this device</p>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-gentle ${
-                      logoutConfirm
+                    className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-gentle text-center ${logoutConfirm
                         ? 'bg-red-600 text-white hover:bg-red-700'
                         : 'border border-red-200 text-red-600 hover:bg-red-50'
-                    }`}
+                      }`}
                   >
                     {logoutConfirm ? 'Confirm Logout' : 'Log Out'}
                   </button>
                 </div>
-                <div className="border-t border-border pt-4 flex items-center justify-between">
+                <div className="border-t border-border pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Delete Account</p>
                     <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
                   </div>
-                  <button className="px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-gentle">
+                  <button className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-gentle text-center">
                     Delete
                   </button>
                 </div>

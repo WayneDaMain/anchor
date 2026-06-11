@@ -68,7 +68,8 @@
     "build": "vite build --sourcemap",
     "serve": "vite preview",
     "android-debug": "npm run build && npx cap sync android && npx cap run android --live-reload",
-    "android": "npm run build && npx cap sync android && npx cap run android"
+    "android": "npm run build && npx cap sync android && npx cap run android",
+    "android-release": "npm run build && npx cap sync android && cd android && gradlew assembleRelease"
   },
   "eslintConfig": {
     "extends": [

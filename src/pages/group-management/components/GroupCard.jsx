@@ -52,10 +52,10 @@ const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
     >
       {/* Image banner */}
       <div className="relative h-32 bg-gradient-to-br from-primary/20 via-accent/15 to-primary/10 overflow-hidden">
-        {group?.image ? (
+        {group?.photoURL ? (
           <Image
-            src={group?.image}
-            alt={group?.imageAlt}
+            src={group?.photoURL}
+            alt={group?.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
@@ -69,19 +69,19 @@ const GroupCard = ({ group, onViewDetails, onLeaveGroup }) => {
           </div>
         )}
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Admin badge */}
         {group?.isAdmin && (
-          <div className="absolute top-3 right-3 px-2.5 py-1 bg-accent text-accent-foreground text-xs font-medium rounded-full">
+          <div className="absolute top-3 right-3 px-2.5 py-1 bg-accent text-accent-foreground text-xs font-medium rounded-full shadow-sm">
             Admin
           </div>
         )}
 
         {/* Member count pill */}
-        <div className="absolute bottom-3 left-4 flex items-center gap-1.5 px-2.5 py-1 bg-card/90 backdrop-blur-sm rounded-full text-xs font-medium text-foreground">
+        <div className="absolute bottom-3 left-4 flex items-center gap-1.5 px-2.5 py-1 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-xs font-medium text-white shadow-sm">
           <Icon name="Users" size={12} className="text-accent" />
-          {group?.memberCount} members
+          <span>{group?.memberCount} members</span>
         </div>
       </div>
 

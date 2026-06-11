@@ -100,18 +100,27 @@ const GroupManagement = () => {
   };
 
   const handleLeaveGroup = async (groupId) => {
+    const group = myGroups.find(g => g.id === groupId);
+    const isCreator = group?.creatorId === currentUser?.uid;
+
     setConfirmConfig({
-      title: 'Leave Group?',
-      message: 'Are you sure you want to leave this group? You will lose access to the group chat and progress tracking.',
-      confirmText: 'Leave Group',
+      title: isCreator ? 'Disband Group?' : 'Leave Group?',
+      message: isCreator
+        ? 'Since you are the creator of this group, leaving will permanently disband the group and delete all shared progress. Are you sure you want to proceed?'
+        : 'Are you sure you want to leave this group? You will lose access to the group chat and progress tracking.',
+      confirmText: isCreator ? 'Disband & Leave' : 'Leave Group',
       cancelText: 'Cancel',
       type: 'danger',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'groups', groupId, 'members', currentUser.uid));
-          await updateDoc(doc(db, 'groups', groupId), {
-            memberCount: increment(-1)
-          });
+          if (isCreator) {
+            await deleteDoc(doc(db, 'groups', groupId));
+          } else {
+            await deleteDoc(doc(db, 'groups', groupId, 'members', currentUser.uid));
+            await updateDoc(doc(db, 'groups', groupId), {
+              memberCount: increment(-1)
+            });
+          }
           await updateUserProfile({ activeGroupId: null });
         } catch (err) {
           console.error('Error leaving group:', err);

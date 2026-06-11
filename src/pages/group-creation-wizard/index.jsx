@@ -58,7 +58,7 @@ const GroupCreationWizard = () => {
   }, [currentStep]);
 
   // Enforce single group membership check
-  if (currentUser?.activeGroupId) {
+  if (currentUser?.activeGroupId && !isSubmitting) {
     return (
       <PageTransition className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="bg-card border border-border rounded-2xl p-6 md:p-8 max-w-md w-full shadow-xl relative text-center">
@@ -115,11 +115,11 @@ const GroupCreationWizard = () => {
     const totalDays = groupData?.selectedDuration === 'custom'
       ? parseInt(groupData?.customDays) || 0
       : {
-          '3-months': 90,
-          '6-months': 180,
-          '1-year': 365,
-          '2-years': 730
-        }?.[groupData?.selectedDuration] || 0;
+        '3-months': 90,
+        '6-months': 180,
+        '1-year': 365,
+        '2-years': 730
+      }?.[groupData?.selectedDuration] || 0;
 
     const chaptersPerDay = totalDays > 0 ? Math.ceil(totalChapters / totalDays) : 0;
     const estimatedMinutes = chaptersPerDay * 4;
@@ -206,11 +206,11 @@ const GroupCreationWizard = () => {
         const durationDays = groupData.selectedDuration === 'custom'
           ? parseInt(groupData.customDays)
           : {
-              '3-months': 90,
-              '6-months': 180,
-              '1-year': 365,
-              '2-years': 730
-            }[groupData.selectedDuration] || 365;
+            '3-months': 90,
+            '6-months': 180,
+            '1-year': 365,
+            '2-years': 730
+          }[groupData.selectedDuration] || 365;
 
         const groupRef = doc(collection(db, 'groups'));
         const groupId = groupRef.id;
@@ -228,10 +228,10 @@ const GroupCreationWizard = () => {
         const planName = groupData.selectedScope === 'entire'
           ? 'Entire Bible Plan'
           : groupData.selectedScope === 'old-testament'
-          ? 'Old Testament Plan'
-          : groupData.selectedScope === 'new-testament'
-          ? 'New Testament Plan'
-          : 'Custom Plan';
+            ? 'Old Testament Plan'
+            : groupData.selectedScope === 'new-testament'
+              ? 'New Testament Plan'
+              : 'Custom Plan';
 
         const newGroupDoc = {
           id: groupId,
@@ -353,7 +353,7 @@ const GroupCreationWizard = () => {
               <Input
                 label="Group Name"
                 type="text"
-                placeholder="e.g. Daily Bible Fellowship"
+                placeholder="e.g. Daily Bible Reading"
                 value={groupData.name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
                 required
@@ -452,7 +452,7 @@ const GroupCreationWizard = () => {
                 Confirm your group settings and reading plan configurations
               </p>
             </div>
-            
+
             <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-sm">
               <div className="border-b border-border pb-4">
                 <h4 className="text-xs uppercase tracking-wider text-accent font-bold mb-1">Group Details</h4>
@@ -544,9 +544,8 @@ const GroupCreationWizard = () => {
               <button
                 onClick={handleBack}
                 disabled={currentStep === 1 || isSubmitting}
-                className={`w-full sm:w-auto border border-border bg-background text-foreground px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
-                  (currentStep === 1 || isSubmitting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-card active:scale-[0.98]'
-                }`}
+                className={`w-full sm:w-auto border border-border bg-background text-foreground px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${(currentStep === 1 || isSubmitting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-card active:scale-[0.98]'
+                  }`}
               >
                 <Icon name="ChevronLeft" size={20} />
                 Back
@@ -599,7 +598,7 @@ const GroupCreationWizard = () => {
               <div className="w-16 h-16 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
             </div>
             <h3 className="text-xl font-heading font-semibold text-foreground mb-2 animate-pulse">
-              Creating Your Fellowship Group
+              Creating Your Group
             </h3>
             <p className="text-sm text-muted-foreground">
               We are configuring the shared reading plan and generating secure invite tokens...
