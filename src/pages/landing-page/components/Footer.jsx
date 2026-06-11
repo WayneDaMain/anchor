@@ -9,33 +9,30 @@ const Footer = () => {
     product: [
       { label: 'Features', path: '/landing-page#features' },
       { label: 'Reading Plans', path: '/plan-creation-wizard' },
-      { label: 'Groups', path: '/group-management' }
     ],
     company: [
-      { label: 'About Us', path: '/landing-page' },
-      { label: 'Blog', path: '/landing-page' },
-      { label: 'Careers', path: '/landing-page' },
-      { label: 'Contact', path: '/landing-page' }
+      { label: 'About Us', path: '/about' },
+      { label: 'Contact', path: '/contact' }
     ],
     legal: [
       { label: 'Privacy Policy', path: '/privacy' },
       { label: 'Terms of Service', path: '/terms' },
-      { label: 'Cookie Policy', path: '/landing-page' },
-      { label: 'GDPR', path: '/landing-page' }
-    ],
-    support: [
-      { label: 'Help Center', path: '/landing-page' },
-      { label: 'Community', path: '/landing-page' },
-      { label: 'Status', path: '/landing-page' },
-      { label: 'API Docs', path: '/landing-page' }
     ]
   };
 
-  const socialLinks = [
-    { icon: 'Facebook', url: 'https://facebook.com', label: 'Facebook' },
-    { icon: 'Twitter', url: 'https://twitter.com', label: 'Twitter' },
-    { icon: 'Instagram', url: 'https://instagram.com', label: 'Instagram' },
-    { icon: 'Youtube', url: 'https://youtube.com', label: 'YouTube' }
+  const ecosystemProducts = [
+    {
+      name: 'Scriptura',
+      description: 'Read the Bible online',
+      url: 'https://biblescriptura.com',
+      logo: '/scriptura.png',
+    },
+    {
+      name: 'Folio',
+      description: 'Bible journaling',
+      url: 'https://folio.biblescriptura.com',
+      logo: '/folio.png',
+    },
   ];
 
   return (
@@ -44,31 +41,17 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 md:gap-10 lg:gap-12 mb-8 md:mb-12">
           <div className="lg:col-span-2">
             <Link to="/landing-page" className="flex items-center space-x-3 mb-4 md:mb-6">
-              <div className="w-14 h-14 bg-violet-600/20 rounded-xl flex items-center justify-center">
-                <Icon name="Anchor" size={58} color="#a78bfa" />
+              <div className="w-14 h-14 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                <Icon name="Anchor" size={58} color="#60a5fa" />
               </div>
               <div>
                 <span className="text-xl font-heading font-semibold text-white block">Anchor</span>
-                <span className="text-xs text-slate-400 tracking-widest uppercase">Bible Reading Tracker</span>
+                <span className="text-[10px] text-slate-400 tracking-wider uppercase font-medium">Bible progress, simplified.</span>
               </div>
             </Link>
             <p className="text-sm md:text-base text-slate-400 mb-4 md:mb-6 leading-relaxed">
               The Bible reading tracker built for people who mean it.
             </p>
-            <div className="flex items-center gap-3 md:gap-4">
-              {socialLinks?.map((social) => (
-                <a
-                  key={social?.label}
-                  href={social?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 md:w-10 md:h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-violet-600 text-slate-400 hover:text-white transition-gentle"
-                  aria-label={social?.label}
-                >
-                  <Icon name={social?.icon} size={18} className="w-4 h-4 md:w-5 md:h-5" />
-                </a>
-              ))}
-            </div>
           </div>
 
           <div>
@@ -76,12 +59,21 @@ const Footer = () => {
             <ul className="space-y-2 md:space-y-3">
               {footerLinks?.product?.map((link) => (
                 <li key={link?.label}>
-                  <Link
-                    to={link?.path}
-                    className="text-sm md:text-base text-slate-400 hover:text-violet-400 transition-gentle"
-                  >
-                    {link?.label}
-                  </Link>
+                  {link.path.includes('#') ? (
+                    <a
+                      href={link.path}
+                      className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
+                    >
+                      {link?.label}
+                    </a>
+                  ) : (
+                    <Link
+                      to={link?.path}
+                      className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
+                    >
+                      {link?.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -94,7 +86,7 @@ const Footer = () => {
                 <li key={link?.label}>
                   <Link
                     to={link?.path}
-                    className="text-sm md:text-base text-slate-400 hover:text-violet-400 transition-gentle"
+                    className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
                   >
                     {link?.label}
                   </Link>
@@ -110,23 +102,7 @@ const Footer = () => {
                 <li key={link?.label}>
                   <Link
                     to={link?.path}
-                    className="text-sm md:text-base text-slate-400 hover:text-violet-400 transition-gentle"
-                  >
-                    {link?.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-sm md:text-base font-semibold text-white mb-3 md:mb-4">Support</h3>
-            <ul className="space-y-2 md:space-y-3">
-              {footerLinks?.support?.map((link) => (
-                <li key={link?.label}>
-                  <Link
-                    to={link?.path}
-                    className="text-sm md:text-base text-slate-400 hover:text-violet-400 transition-gentle"
+                    className="text-sm md:text-base text-slate-400 hover:text-blue-400 transition-gentle"
                   >
                     {link?.label}
                   </Link>
@@ -136,20 +112,36 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="pt-6 md:pt-8 border-t border-slate-800">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs md:text-sm text-slate-500 text-center md:text-left">
-              &copy; {currentYear} Anchor. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex items-center gap-2">
-                <Icon name="Shield" size={16} color="#10b981" className="w-4 h-4" />
-                <span className="text-xs md:text-sm text-slate-500">SSL Secured</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="Lock" size={16} color="#10b981" className="w-4 h-4" />
-                <span className="text-xs md:text-sm text-slate-500">GDPR Compliant</span>
-              </div>
+        <div className="pt-6 md:pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-xs md:text-sm text-slate-500 text-center md:text-left order-2 md:order-1">
+            &copy; {currentYear} Anchor. All rights reserved.
+          </p>
+
+          {/* Powered by Scriptura ecosystem */}
+          <div className="flex flex-col items-center md:items-end gap-2.5 order-1 md:order-2">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Part of the Scriptura Ecosystem
+            </span>
+            <div className="flex items-center gap-4">
+              {ecosystemProducts.map(product => (
+                <a
+                  key={product.name}
+                  href={product.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-800/40 hover:bg-slate-800 hover:border-slate-700 transition-all group"
+                  title={product.description}
+                >
+                  <img
+                    src={product.logo}
+                    alt={product.name}
+                    className="h-5 w-5 object-contain rounded-sm"
+                  />
+                  <span className="text-xs font-semibold text-slate-400 group-hover:text-white transition-colors">
+                    {product.name}
+                  </span>
+                </a>
+              ))}
             </div>
           </div>
         </div>

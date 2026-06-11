@@ -16,42 +16,36 @@ const Login = () => {
     <PageTransition className="min-h-screen bg-background flex">
 
       {/* ── Left brand panel (desktop only) ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary/10 via-background to-accent/10 flex-col justify-between p-12 xl:p-16 overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-50 border-r border-slate-100 flex-col justify-between p-12 xl:p-16 overflow-hidden">
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
             backgroundImage: 'radial-gradient(circle, var(--color-foreground) 1px, transparent 1px)',
             backgroundSize: '28px 28px'
           }}
         />
-        <motion.div
-          className="absolute -bottom-40 -left-20 w-[500px] h-[500px] bg-accent/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        />
 
         <div className="relative z-10">
-          <Link to="/landing-page" className="flex items-center space-x-3 mb-16">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Icon name="Anchor" size={44} color="var(--color-primary)" />
-            </div>
-            <span className="text-xl font-heading font-semibold text-foreground">Anchor</span>
+          <Link to="/landing-page" className="flex items-center space-x-2.5 mb-16">
+            <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
+            <span className="text-base font-bold text-slate-900 tracking-tight font-sans">Anchor</span>
           </Link>
 
           <div className="mb-12">
-            <h1 className="text-4xl xl:text-5xl font-heading font-bold text-foreground leading-[1.15] mb-5">
-              Welcome back.
-              <br />
-              <span className="text-accent">Your plan is waiting.</span>
+            <h1 className="text-3xl xl:text-4xl font-sans font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-5">
+              Welcome back. <br />
+              <span className="bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 bg-clip-text text-transparent">
+                Your plan is waiting.
+              </span>
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-sm">
+            <p className="text-base text-slate-500 font-light leading-relaxed max-w-sm">
               Sign in to pick up right where you left off. Your progress, streaks, and groups are all here for you.
             </p>
           </div>
         </div>
 
-        <p className="relative z-10 text-sm text-muted-foreground/60 mt-auto">
-          100% free · No credit card · No pressure
+        <p className="relative z-10 text-xs font-semibold tracking-wider text-slate-400 uppercase mt-auto select-none">
+          100% free · No credit card required
         </p>
       </div>
 

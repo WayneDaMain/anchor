@@ -44,25 +44,22 @@ const FeaturesSection = () => {
   ];
 
   return (
-    <section id="features" className="py-24 md:py-32 lg:py-40 bg-white relative">
+    <section id="features" className="py-24 md:py-32 lg:py-40 bg-white dark:bg-zinc-950 transition-colors duration-300 relative">
       {/* Subtle gradient accent */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-violet-300/40 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-16 md:mb-20 lg:mb-28">
-            <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-200/60 text-violet-700 px-4 py-1.5 rounded-full text-sm font-medium mb-6">
-              [ Features ]
-            </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-heading font-bold leading-tight mb-5">
-              <span className="text-slate-900">Everything that keeps you</span>
+              <span className="text-slate-900 dark:text-zinc-100">Everything that keeps you</span>
               <br />
-              <span className="bg-gradient-to-r from-violet-600 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 bg-clip-text text-transparent">
                 from quitting.
               </span>
             </h2>
-            <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-light">
-              Built for real people with real schedules — not for people who already have perfect habits.
+            <p className="text-lg md:text-xl text-slate-500 dark:text-zinc-450 max-w-2xl mx-auto font-light">
+              Designed for real-world consistency. A thoughtful, self-paced framework that supports your daily reading, without the stress of rigid timelines.
             </p>
           </div>
         </FadeIn>

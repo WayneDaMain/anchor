@@ -1,56 +1,161 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import Icon from '../../../components/AppIcon';
 
 const ProgressOverview = ({ planData, progressStats, onClick }) => {
   const progressPercentage = planData?.totalDays
     ? Math.round((progressStats?.daysCompleted / planData?.totalDays) * 100)
     : 0;
 
+  const currentStreak = progressStats?.currentStreak || 0;
+
+  // Math for the SVG progress circle
+  // Radius = 26. Circumference = 2 * PI * 26 = 163.36
+  const strokeDasharray = 163.36;
+  const strokeDashoffset = strokeDasharray * (1 - progressPercentage / 100);
+
+  // Extract initials of active plan name
+  const planInitials = planData?.name
+    ? planData.name
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'PR';
+
   const stats = [
-    { label: 'Days Done', value: progressStats?.daysCompleted },
-    { label: 'Remaining', value: (planData?.totalDays || 0) - (progressStats?.daysCompleted || 0) },
-    { label: 'Books', value: progressStats?.booksCompleted },
-    { label: 'Chapters', value: progressStats?.chaptersCompleted },
+    { label: 'Days Completed', value: `${progressStats?.daysCompleted || 0} days`, icon: 'Check' },
+    { label: 'Days Remaining', value: `${(planData?.totalDays || 0) - (progressStats?.daysCompleted || 0)} days`, icon: 'Calendar' },
+    { label: 'Books Finished', value: `${progressStats?.booksCompleted || 0} books`, icon: 'BookOpen' },
+    { label: 'Chapters Logged', value: `${progressStats?.chaptersCompleted || 0} chapters`, icon: 'BookCheck' },
   ];
 
   return (
     <div
       onClick={onClick}
-      className={`bg-card rounded-2xl border border-border p-5 shadow-sm ${
+      className={`bg-white border border-slate-200/80 rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden transition-all duration-300 hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] ${
         onClick
-          ? 'cursor-pointer hover:border-accent/30 hover:shadow-md transition-all active:scale-[0.99] select-none'
-          : ''
+          ? 'cursor-pointer hover:border-slate-400 active:scale-[0.99] select-none'
+          : 'select-none'
       }`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-heading font-bold text-foreground">Progress</h2>
-        <span className="text-2xl font-heading font-extrabold text-accent leading-none">{progressPercentage}%</span>
+      {/* Accent glow on hover */}
+      <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-slate-50 blur-2xl pointer-events-none" />
+
+      {/* Card Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold font-sans tracking-wide">
+            {planInitials}
+          </div>
+          <div>
+            <span className="text-xs font-bold text-slate-900 block leading-tight">
+              {planData?.name || 'Active Plan'}
+            </span>
+            <span className="text-[10px] text-slate-400 block font-normal leading-tight">
+              Overall Progress
+            </span>
+          </div>
+        </div>
+
+        {/* Streak Badge */}
+        <div
+          className={`border px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 transition-all duration-200 ${
+            currentStreak > 0
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+              : 'bg-slate-50 border-slate-100 text-slate-500'
+          }`}
+        >
+          <Icon
+            name="Zap"
+            size={10}
+            className={currentStreak > 0 ? 'text-emerald-500 fill-emerald-500' : 'text-slate-400'}
+          />
+          <span>Streak: {currentStreak}d</span>
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-5">
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+      <div className="border-b border-slate-100 my-4" />
+
+      {/* Card Body */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase block">
+            Plan Progress
+          </span>
+          <span className="text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight block">
+            {progressPercentage}%
+          </span>
+        </div>
+
+        {/* Circular Radial Progress */}
+        <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle
+              cx="32"
+              cy="32"
+              r="26"
+              className="stroke-slate-100"
+              strokeWidth="3.5"
+              fill="transparent"
+            />
+            <motion.circle
+              cx="32"
+              cy="32"
+              r="26"
+              className="stroke-slate-900"
+              strokeWidth="3.5"
+              fill="transparent"
+              strokeDasharray={strokeDasharray}
+              initial={{ strokeDashoffset: strokeDasharray }}
+              animate={{ strokeDashoffset: strokeDashoffset }}
+              transition={{ type: 'spring', stiffness: 90, damping: 15 }}
+            />
+          </svg>
+          <div className="absolute text-xs font-bold text-slate-900 tracking-tighter">
+            {progressPercentage}%
+          </div>
+        </div>
+      </div>
+
+      {/* Progress meter bar */}
+      <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3">
+        <div className="flex items-center justify-between text-2xs text-slate-400 font-medium">
+          <span>COMPLETION</span>
+          <span>
+            {progressStats?.daysCompleted || 0} of {planData?.totalDays || 0} days
+          </span>
+        </div>
+
+        <div className="w-full h-1 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
           <motion.div
+            className="h-full bg-slate-900"
             initial={{ width: 0 }}
-            whileInView={{ width: `${progressPercentage}%` }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-accent to-primary rounded-full"
+            animate={{ width: `${progressPercentage}%` }}
+            transition={{ type: 'spring', stiffness: 80, damping: 15 }}
           />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">Overall plan completion</p>
       </div>
 
-      {/* 2x2 stat grid — no icons */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {stats.map(stat => (
-          <div key={stat.label} className="bg-muted/30 rounded-xl p-3 border border-border/40">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+      {/* Checklist Stats */}
+      <div className="mt-5 space-y-2">
+        <div className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+          Plan Breakdown
+        </div>
+
+        {stats.map((stat, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 py-1 text-sm transition-all duration-200 hover:translate-x-0.5 group"
+          >
+            <div className="w-5 h-5 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:border-slate-800 group-hover:text-slate-800 transition-colors">
+              <Icon name={stat.icon} size={11} strokeWidth={2.5} />
+            </div>
+            <span className="font-medium text-slate-500 group-hover:text-slate-700 transition-colors">
               {stat.label}
-            </p>
-            <p className="text-2xl font-heading font-extrabold text-foreground leading-none">
-              {stat.value ?? 0}
-            </p>
+            </span>
+            <span className="text-slate-800 font-bold ml-auto">{stat.value}</span>
           </div>
         ))}
       </div>

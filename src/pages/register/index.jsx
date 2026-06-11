@@ -23,65 +23,58 @@ const Register = () => {
     <PageTransition className="min-h-screen bg-background flex">
 
       {/* ── Left brand panel (desktop only) ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary/10 via-background to-accent/10 flex-col justify-between p-12 xl:p-16 overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-50 border-r border-slate-100 flex-col justify-between p-12 xl:p-16 overflow-hidden">
         {/* Dot grid */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
             backgroundImage: 'radial-gradient(circle, var(--color-foreground) 1px, transparent 1px)',
             backgroundSize: '28px 28px'
           }}
         />
-        {/* Glow */}
-        <motion.div
-          className="absolute -bottom-40 -left-20 w-[500px] h-[500px] bg-accent/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        />
 
         <div className="relative z-10">
           {/* Logo */}
-          <Link to="/landing-page" className="flex items-center space-x-3 mb-16">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Icon name="Anchor" size={44} color="var(--color-primary)" />
-            </div>
-            <span className="text-xl font-heading font-semibold text-foreground">Anchor</span>
+          <Link to="/landing-page" className="flex items-center space-x-2.5 mb-16">
+            <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
+            <span className="text-base font-bold text-slate-900 tracking-tight font-sans">Anchor</span>
           </Link>
 
           {/* Headline */}
           <div className="mb-12">
-            <h1 className="text-4xl xl:text-5xl font-heading font-bold text-foreground leading-[1.15] mb-5">
-              Start reading.
-              <br />
-              <span className="text-accent">Stop losing your place.</span>
+            <h1 className="text-3xl xl:text-4xl font-sans font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-5">
+              Start reading. <br />
+              <span className="bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 bg-clip-text text-transparent">
+                Stop losing your pace.
+              </span>
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-sm">
-              Anchor tracks your Bible reading progress so you always know where you are — and makes it easy to get back when life gets in the way.
+            <p className="text-base text-slate-500 font-light leading-relaxed max-w-sm">
+              Anchor tracks your Bible reading progress so you always know where you are, and makes it easy to get back whenever.
             </p>
           </div>
 
           {/* Perks */}
-          <ul className="space-y-5">
+          <ul className="space-y-4">
             {perks.map((perk, i) => (
               <motion.li
                 key={i}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.1, duration: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
-                className="flex items-start gap-4"
+                transition={{ delay: 0.2 + i * 0.08, duration: 0.4, ease: [0.25, 0.4, 0.25, 1] }}
+                className="flex items-start gap-3 select-none"
               >
-                <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Icon name={perk.icon} size={18} color="var(--color-accent)" />
+                <div className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 bg-white/80 flex-shrink-0 mt-0.5 shadow-2xs">
+                  <Icon name={perk.icon} size={10} strokeWidth={2.5} />
                 </div>
-                <span className="text-base text-foreground/80 leading-snug">{perk.text}</span>
+                <span className="text-sm font-semibold text-slate-500 leading-snug">{perk.text}</span>
               </motion.li>
             ))}
           </ul>
         </div>
 
         {/* Bottom tagline */}
-        <p className="relative z-10 text-sm text-muted-foreground/60 mt-auto">
-          100% free · No credit card · No pressure
+        <p className="relative z-10 text-xs font-semibold tracking-wider text-slate-400 uppercase mt-auto select-none">
+          100% free · No credit card required
         </p>
       </div>
 

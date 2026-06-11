@@ -145,7 +145,6 @@ const TodayAssignment = ({
               rel="noopener noreferrer"
               className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 hover:border-accent/30 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all duration-200"
             >
-              <Icon name="BookOpen" size={15} />
               <span>Read Bible Online</span>
               <Icon name="ExternalLink" size={12} className="opacity-60 ml-0.5" />
             </a>

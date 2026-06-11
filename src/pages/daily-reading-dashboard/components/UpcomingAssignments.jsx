@@ -21,10 +21,9 @@ const UpcomingAssignments = ({ upcomingDays, onViewTimeline }) => {
           Upcoming Readings
         </h2>
         <div className="w-9 h-9 bg-accent/10 rounded-xl flex items-center justify-center">
-          <Icon name="CalendarDays" size={18} className="text-accent" />
         </div>
       </div>
-      
+
       <div className="space-y-3">
         {upcomingDays?.length === 0 ? (
           <div className="text-center py-6 border border-dashed border-border rounded-xl">
@@ -34,7 +33,7 @@ const UpcomingAssignments = ({ upcomingDays, onViewTimeline }) => {
           upcomingDays?.map((day) => {
             const dateInfo = getCalendarDate(day?.date);
             return (
-              <div 
+              <div
                 key={day?.id}
                 className="group border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-primary/20 transition-all duration-250 rounded-xl p-3 md:p-4 flex items-start gap-3 md:gap-4 hover:translate-x-1"
               >
@@ -73,7 +72,7 @@ const UpcomingAssignments = ({ upcomingDays, onViewTimeline }) => {
       </div>
 
       <div className="mt-5 pt-4 border-t border-border/80 space-y-3">
-        <button 
+        <button
           onClick={onViewTimeline}
           className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-border bg-transparent text-muted-foreground hover:text-accent hover:bg-accent/5 hover:border-accent/30 transition-all flex items-center justify-center gap-2"
         >
@@ -88,4 +87,4 @@ const UpcomingAssignments = ({ upcomingDays, onViewTimeline }) => {
   );
 };
 
-export default UpcomingAssignments;
+export default UpcomingAssignments;

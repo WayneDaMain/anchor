@@ -16,6 +16,8 @@ import Terms from './pages/terms';
 import Privacy from './pages/privacy';
 import Settings from './pages/settings';
 import GroupCreationWizard from './pages/group-creation-wizard';
+import About from './pages/about';
+import Contact from './pages/contact';
 
 const Routes = () => {
   return (
@@ -85,6 +87,8 @@ const Routes = () => {
         {/* Always accessible */}
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>

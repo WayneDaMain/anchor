@@ -10,11 +10,11 @@ import Footer from './components/Footer';
 
 const LandingPage = () => {
   useEffect(() => {
-    document.title = 'Anchor — Bible Reading Tracker';
+    document.title = 'Anchor — Bible progress, simplified.';
   }, []);
 
   return (
-    <PageTransition className="min-h-screen bg-white">
+    <PageTransition className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300">
       <HeroSection />
       <MarqueeTicker />
       <FeaturesSection />
