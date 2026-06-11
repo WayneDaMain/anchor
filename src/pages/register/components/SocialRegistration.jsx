@@ -17,7 +17,11 @@ const SocialRegistration = () => {
       await signinWithGoogle();
       navigate('/daily-reading-dashboard');
     } catch (err) {
-      if (err.code === 'auth/popup-closed-by-user') {
+      if (
+        err.code === 'auth/popup-closed-by-user' ||
+        err.message?.toLowerCase().includes('cancel') ||
+        err.message?.toLowerCase().includes('cancelled')
+      ) {
         setError('Sign-in was cancelled.');
       } else if (err.code === 'auth/cors-unsupported' || err.code === 'auth/popup-blocked') {
         setError('Pop-up was blocked. Redirecting to Google sign-in…');
@@ -25,9 +29,11 @@ const SocialRegistration = () => {
         return;
       } else if (err.code === 'auth/unauthorized-domain') {
         setError('This domain is not authorized. Add it to Firebase Console → Auth → Authorized domains.');
+      } else if (err.code === 'auth/credential-already-in-use') {
+        setError('This Google account is already linked to another account.');
       } else {
         console.error('Google sign-in error:', err);
-        setError('Google sign-in failed. Please try again.');
+        setError(err.message || 'Google sign-in failed. Please try again.');
       }
     } finally {
       setLoading(false);

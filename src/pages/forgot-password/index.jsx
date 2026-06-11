@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { motion } from 'framer-motion';
 import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
@@ -7,6 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
+
+const isNative = Capacitor.isNativePlatform();
+const backTo = isNative ? '/onboarding' : '/landing-page';
 
 const ForgotPassword = () => {
   const { resetPassword } = useAuth();
@@ -56,7 +60,7 @@ const ForgotPassword = () => {
         <div className="max-w-md w-full mx-auto">
           {/* Logo */}
           <div className="flex items-center justify-center mb-10">
-            <Link to="/landing-page" className="flex items-center space-x-3">
+            <Link to={backTo} className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Icon name="Anchor" size={44} color="var(--color-primary)" />
               </div>

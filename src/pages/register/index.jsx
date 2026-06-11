@@ -1,11 +1,15 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { motion } from 'framer-motion';
 import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
 import RegistrationForm from './components/RegistrationForm';
 import SocialRegistration from './components/SocialRegistration';
 import Icon from '../../components/AppIcon';
+
+const isNative = Capacitor.isNativePlatform();
+const backTo = isNative ? '/onboarding' : '/landing-page';
 
 const perks = [
   { icon: 'Target', text: 'Know exactly where you are in your reading plan' },
@@ -35,7 +39,7 @@ const Register = () => {
 
         <div className="relative z-10">
           {/* Logo */}
-          <Link to="/landing-page" className="flex items-center space-x-2.5 mb-16">
+          <Link to={backTo} className="flex items-center space-x-2.5 mb-16">
             <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
             <span className="text-base font-bold text-slate-900 tracking-tight font-sans">Anchor</span>
           </Link>
@@ -82,13 +86,13 @@ const Register = () => {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-16 xl:px-20 min-h-screen lg:min-h-0 overflow-y-auto">
         {/* Mobile logo */}
         <div className="flex items-center justify-between mb-8 lg:hidden">
-          <Link to="/landing-page" className="flex items-center space-x-3">
+          <Link to={backTo} className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
               <Icon name="Anchor" size={36} color="var(--color-primary)" />
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">Anchor</span>
           </Link>
-          <Link to="/landing-page" className="text-sm text-muted-foreground hover:text-foreground transition-gentle">
+          <Link to={backTo} className="text-sm text-muted-foreground hover:text-foreground transition-gentle">
             ← Back
           </Link>
         </div>

@@ -93,7 +93,7 @@ const VerseOfTheDay = () => {
             <span className="w-1 h-1 rounded-full bg-accent/50 animate-ping" />
           )}
         </div>
-        <p className="text-normal font-medium text-foreground leading-relaxed mb-1 line-clamp-2">
+        <p className="text-xs sm:text-sm font-medium text-foreground leading-relaxed mb-1">
           "{verse.text}"
         </p>
         <cite className="text-[10px] font-bold text-muted-foreground not-italic uppercase tracking-wider">

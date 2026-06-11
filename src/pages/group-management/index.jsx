@@ -16,6 +16,7 @@ import GroupDetailsModal from './components/GroupDetailsModal';
 import CreateGroupModal from './components/CreateGroupModal';
 import JoinByCodeModal from './components/JoinByCodeModal';
 import EmptyState from './components/EmptyState';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,6 +43,7 @@ const GroupManagement = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState(null);
   
   const [myGroups, setMyGroups] = useState([]);
   const [discoverGroups, setDiscoverGroups] = useState([]);
@@ -98,23 +100,42 @@ const GroupManagement = () => {
   };
 
   const handleLeaveGroup = async (groupId) => {
-    if (window.confirm('Are you sure you want to leave this group?')) {
-      try {
-        await deleteDoc(doc(db, 'groups', groupId, 'members', currentUser.uid));
-        await updateDoc(doc(db, 'groups', groupId), {
-          memberCount: increment(-1)
-        });
-        await updateUserProfile({ activeGroupId: null });
-      } catch (err) {
-        console.error('Error leaving group:', err);
-        alert('Failed to leave group. Please try again.');
+    setConfirmConfig({
+      title: 'Leave Group?',
+      message: 'Are you sure you want to leave this group? You will lose access to the group chat and progress tracking.',
+      confirmText: 'Leave Group',
+      cancelText: 'Cancel',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'groups', groupId, 'members', currentUser.uid));
+          await updateDoc(doc(db, 'groups', groupId), {
+            memberCount: increment(-1)
+          });
+          await updateUserProfile({ activeGroupId: null });
+        } catch (err) {
+          console.error('Error leaving group:', err);
+          setConfirmConfig({
+            title: 'Error',
+            message: 'Failed to leave group. Please try again.',
+            confirmText: 'OK',
+            cancelText: null,
+            type: 'danger'
+          });
+        }
       }
-    }
+    });
   };
 
   const handleJoinGroup = async (group) => {
     if (currentUser?.activeGroupId) {
-      alert('You can only be in one group at a time. Please leave your current group first.');
+      setConfirmConfig({
+        title: 'Already in a Group',
+        message: 'You can only be in one group at a time. Please leave your current group first.',
+        confirmText: 'OK',
+        cancelText: null,
+        type: 'warning'
+      });
       return;
     }
 
@@ -148,6 +169,7 @@ const GroupManagement = () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            userId: currentUser.uid,
             email: currentUser.email,
             name: currentUser.displayName || currentUser.email.split('@')[0],
             groupName: group.name
@@ -158,13 +180,25 @@ const GroupManagement = () => {
       }
     } catch (err) {
       console.error('Error joining group:', err);
-      alert('Failed to join group. Please try again.');
+      setConfirmConfig({
+        title: 'Join Failed',
+        message: 'Failed to join group. Please check your connection and try again.',
+        confirmText: 'OK',
+        cancelText: null,
+        type: 'danger'
+      });
     }
   };
 
   const handleJoinByCode = async (code) => {
     if (currentUser?.activeGroupId) {
-      alert('You can only be in one group at a time. Please leave your current group first.');
+      setConfirmConfig({
+        title: 'Already in a Group',
+        message: 'You can only be in one group at a time. Please leave your current group first.',
+        confirmText: 'OK',
+        cancelText: null,
+        type: 'warning'
+      });
       return;
     }
 
@@ -172,7 +206,13 @@ const GroupManagement = () => {
       const q = query(collection(db, 'groups'), where('inviteCode', '==', code.trim().toUpperCase()));
       const snap = await getDocs(q);
       if (snap.empty) {
-        alert('Invalid invite code. Please check and try again.');
+        setConfirmConfig({
+          title: 'Invalid Invite Code',
+          message: 'The invitation code you entered is invalid. Please check and try again.',
+          confirmText: 'OK',
+          cancelText: null,
+          type: 'warning'
+        });
         return;
       }
 
@@ -204,6 +244,7 @@ const GroupManagement = () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            userId: currentUser.uid,
             email: currentUser.email,
             name: currentUser.displayName || currentUser.email.split('@')[0],
             groupName: group.name
@@ -214,7 +255,13 @@ const GroupManagement = () => {
       }
     } catch (err) {
       console.error('Error joining by code:', err);
-      alert('Failed to join group. Please try again.');
+      setConfirmConfig({
+        title: 'Join Failed',
+        message: 'Failed to join group. Please check your connection and try again.',
+        confirmText: 'OK',
+        cancelText: null,
+        type: 'danger'
+      });
     }
   };
 
@@ -288,7 +335,13 @@ const GroupManagement = () => {
                   iconPosition="left"
                   onClick={() => {
                     if (currentUser?.activeGroupId) {
-                      alert('You can only be in one group at a time. Please leave your current group first.');
+                      setConfirmConfig({
+                        title: 'Already in a Group',
+                        message: 'You can only be in one group at a time. Please leave your current group first before creating a new group.',
+                        confirmText: 'OK',
+                        cancelText: null,
+                        type: 'warning'
+                      });
                     } else {
                       navigate('/group-creation-wizard');
                     }
@@ -353,7 +406,13 @@ const GroupManagement = () => {
                     actionText="Create Your First Group"
                     onAction={() => {
                       if (currentUser?.activeGroupId) {
-                        alert('You can only be in one group at a time.');
+                        setConfirmConfig({
+                          title: 'Already in a Group',
+                          message: 'You can only be in one group at a time.',
+                          confirmText: 'OK',
+                          cancelText: null,
+                          type: 'warning'
+                        });
                       } else {
                         navigate('/group-creation-wizard');
                       }
@@ -410,6 +469,18 @@ const GroupManagement = () => {
           onJoin={handleJoinByCode}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={!!confirmConfig}
+        onClose={() => setConfirmConfig(null)}
+        title={confirmConfig?.title}
+        message={confirmConfig?.message}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        type={confirmConfig?.type}
+        onConfirm={confirmConfig?.onConfirm}
+        onCancel={confirmConfig?.onCancel}
+      />
 
       <AppFooter />
       <MobileBottomNav />

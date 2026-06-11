@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithCredential,
   sendPasswordResetEmail,
   signOut,
   updateProfile,
@@ -11,9 +12,12 @@ import {
   signInWithRedirect,
   getRedirectResult,
 } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, storage, db } from '../firebase';
+import { auth, db } from '../firebase';
+import { compressImage } from '../utils/imageHelpers';
+import OneSignal from '@onesignal/capacitor-plugin';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 const AuthContext = createContext(null);
 
@@ -35,6 +39,10 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Sync OneSignal native push registration ID
+        if (Capacitor.isNativePlatform()) {
+          OneSignal.login(user.uid).catch(err => console.error("OneSignal login failed:", err));
+        }
         // Sync user doc / timezone
         await ensureUserDoc(user);
         // Fetch additional user data from Firestore
@@ -49,6 +57,9 @@ export const AuthProvider = ({ children }) => {
           setCurrentUser(user);
         }
       } else {
+        if (Capacitor.isNativePlatform()) {
+          OneSignal.logout().catch(err => console.error("OneSignal logout failed:", err));
+        }
         setCurrentUser(null);
       }
       setLoading(false);
@@ -90,6 +101,7 @@ export const AuthProvider = ({ children }) => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+              userId: user.uid,
               email: user.email,
               name: user.displayName || extraData.fullName || 'there'
             })
@@ -138,8 +150,30 @@ export const AuthProvider = ({ children }) => {
   const signin = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
 
-  // ── Google Sign In (popup with redirect fallback) ──
+  // ── Google Sign In ──
   const signinWithGoogle = async () => {
+    // On native (Capacitor), use the native Firebase plugin which shows
+    // the Android account picker and signs in without opening Chrome.
+    // Then bridge the native credential to the JS Firebase SDK so that
+    // onAuthStateChanged fires properly.
+    if (Capacitor.isNativePlatform()) {
+      const result = await FirebaseAuthentication.signInWithGoogle();
+
+      // Bridge: sign the JS Firebase SDK in with the native id token
+      if (result?.credential?.idToken) {
+        const credential = GoogleAuthProvider.credential(result.credential.idToken);
+        await signInWithCredential(auth, credential);
+        // onAuthStateChanged will now fire and handle the rest
+        // (ensureUserDoc, Firestore fetch, etc.)
+      } else if (result?.user) {
+        // Fallback: if no idToken but user exists, ensure doc manually
+        await ensureUserDoc(result.user);
+      }
+
+      return result?.user || null;
+    }
+
+    // On web, use popup with redirect fallback
     const provider = new GoogleAuthProvider();
     let result;
     try {
@@ -167,17 +201,19 @@ export const AuthProvider = ({ children }) => {
   // ── Upload Profile Photo ──
   const uploadProfilePhoto = async (file) => {
     if (!currentUser) throw new Error('Not authenticated');
-    const storageRef = ref(storage, `profile-photos/${currentUser.uid}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    await updateProfile(auth.currentUser, { photoURL: url });
+    const base64Url = await compressImage(file, 150, 150, 0.7);
+    try {
+      await updateProfile(auth.currentUser, { photoURL: base64Url });
+    } catch (authErr) {
+      console.warn('Could not update Firebase Auth profile photoURL (likely due to length limit), saving in Firestore instead:', authErr.message);
+    }
     await setDoc(
       doc(db, 'users', currentUser.uid),
-      { photoURL: url },
+      { photoURL: base64Url },
       { merge: true }
     );
-    setCurrentUser(prev => prev ? { ...prev, photoURL: url } : null);
-    return url;
+    setCurrentUser(prev => prev ? { ...prev, photoURL: base64Url } : null);
+    return base64Url;
   };
 
   // ── Update Active Plan ──

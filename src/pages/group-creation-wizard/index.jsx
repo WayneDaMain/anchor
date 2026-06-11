@@ -15,8 +15,8 @@ import DurationSelection from '../plan-creation-wizard/components/DurationSelect
 import StyleSelection from '../plan-creation-wizard/components/StyleSelection';
 
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { db } from '../../firebase';
+import { compressImage } from '../../utils/imageHelpers';
 
 const GroupCreationWizard = () => {
   const navigate = useNavigate();
@@ -219,11 +219,9 @@ const GroupCreationWizard = () => {
         let photoURL = null;
         if (groupPhotoFile) {
           try {
-            const storageRef = ref(storage, `group-photos/${groupId}`);
-            await uploadBytes(storageRef, groupPhotoFile);
-            photoURL = await getDownloadURL(storageRef);
+            photoURL = await compressImage(groupPhotoFile, 400, 200, 0.7);
           } catch (uploadErr) {
-            console.error('Failed to upload group photo:', uploadErr);
+            console.error('Failed to compress group photo:', uploadErr);
           }
         }
 
@@ -286,6 +284,7 @@ const GroupCreationWizard = () => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+              userId: currentUser.uid,
               email: currentUser.email,
               name: currentUser.displayName || currentUser.email.split('@')[0],
               groupName: groupData.name

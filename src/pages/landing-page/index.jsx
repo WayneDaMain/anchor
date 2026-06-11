@@ -14,7 +14,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <PageTransition className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300">
+    <PageTransition className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-300 overflow-x-hidden">
       <HeroSection />
       <MarqueeTicker />
       <FeaturesSection />

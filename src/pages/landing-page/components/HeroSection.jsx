@@ -55,19 +55,19 @@ const HeroSection = () => {
       </div>
 
       {/* Minimalist Top Header */}
-      <header className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-8 h-[88px] flex items-center justify-between">
+      <header className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 h-[88px] flex items-center justify-between">
         <div 
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-1.5 sm:gap-2 cursor-pointer flex-shrink-0"
         >
-          <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
-          <span className="text-base font-bold text-slate-900 dark:text-zinc-100 tracking-tight font-sans">Anchor</span>
+          <Icon name="Anchor" size={24} className="w-6 h-6 object-contain text-slate-900 dark:text-zinc-100" />
+          <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-zinc-100 tracking-tight font-sans">Anchor</span>
         </div>
         
         <nav className="hidden md:flex items-center gap-8">
           <button
             onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-450 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
+            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
           >
             Features
           </button>
@@ -76,43 +76,43 @@ const HeroSection = () => {
               const el = document.getElementById('how-it-works');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-450 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
+            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
           >
             How It Works
           </button>
           <button
             onClick={() => navigate('/about')}
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-450 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
+            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
           >
             About
           </button>
           <button
             onClick={() => navigate('/contact')}
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-450 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
+            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 font-medium cursor-pointer"
           >
             Contact
           </button>
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-800 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 flex items-center justify-center cursor-pointer bg-white/50 dark:bg-zinc-900/50"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-slate-200 dark:border-zinc-800 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 flex items-center justify-center cursor-pointer bg-white/50 dark:bg-zinc-900/50 flex-shrink-0"
             aria-label="Toggle Theme"
           >
-            <Icon name={isDark ? 'Sun' : 'Moon'} size={15} />
+            <Icon name={isDark ? 'Sun' : 'Moon'} size={14} />
           </button>
 
           <button
             onClick={() => navigate('/login')}
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all duration-200 font-medium px-2 py-1 cursor-pointer"
+            className="text-xs sm:text-sm text-slate-500 hover:text-slate-900 dark:text-zinc-450 dark:hover:text-zinc-100 transition-all duration-200 font-medium px-1.5 sm:px-2 py-1 cursor-pointer flex-shrink-0"
           >
             Sign In
           </button>
           <button
             onClick={() => navigate('/register')}
-            className="text-xs font-semibold text-slate-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-slate-800 dark:hover:border-zinc-400 rounded-full px-5 py-2 transition-all duration-250 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-sm cursor-pointer"
+            className="text-[10px] sm:text-xs font-semibold text-slate-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-slate-800 dark:hover:border-zinc-400 rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 transition-all duration-250 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-sm cursor-pointer flex-shrink-0"
           >
             Get Started
           </button>

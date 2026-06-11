@@ -196,6 +196,7 @@ const PlanCreationWizard = () => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+              userId: currentUser.uid,
               email: currentUser.email,
               name: currentUser.displayName || currentUser.fullName || 'there',
               planName: newPlan.name

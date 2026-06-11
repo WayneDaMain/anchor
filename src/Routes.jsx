@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import ProtectedRoute from "components/ProtectedRoute";
@@ -7,6 +8,7 @@ import NotFound from "pages/NotFound";
 import DailyReadingDashboard from './pages/daily-reading-dashboard';
 import GroupManagement from './pages/group-management';
 import LandingPage from './pages/landing-page';
+import Onboarding from './pages/onboarding';
 import ProgressReports from './pages/progress-reports';
 import PlanCreationWizard from './pages/plan-creation-wizard';
 import Register from './pages/register';
@@ -19,6 +21,8 @@ import GroupCreationWizard from './pages/group-creation-wizard';
 import About from './pages/about';
 import Contact from './pages/contact';
 
+const isNative = Capacitor.isNativePlatform();
+
 const Routes = () => {
   return (
     <BrowserRouter>
@@ -28,14 +32,25 @@ const Routes = () => {
         {/* Public pages (redirect to dashboard if logged in) */}
         <Route path="/" element={
           <ProtectedRoute publicOnly>
-            <LandingPage />
+            {isNative ? <Onboarding /> : <LandingPage />}
           </ProtectedRoute>
         } />
-        <Route path="/landing-page" element={
-          <ProtectedRoute publicOnly>
-            <LandingPage />
-          </ProtectedRoute>
-        } />
+        {/* Landing page — web only */}
+        {!isNative && (
+          <Route path="/landing-page" element={
+            <ProtectedRoute publicOnly>
+              <LandingPage />
+            </ProtectedRoute>
+          } />
+        )}
+        {/* Onboarding — native only (also reachable directly) */}
+        {isNative && (
+          <Route path="/onboarding" element={
+            <ProtectedRoute publicOnly>
+              <Onboarding />
+            </ProtectedRoute>
+          } />
+        )}
         <Route path="/register" element={
           <ProtectedRoute publicOnly>
             <Register />

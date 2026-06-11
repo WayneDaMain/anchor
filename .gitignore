@@ -7,3 +7,7 @@ package-lock.json
 .idea/
 vite.config.*s.*
 .env
+
+# Android signing
+android/key.properties
+android/app/release.keystore

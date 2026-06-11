@@ -5,6 +5,7 @@ const AppFooter = () => {
   const currentYear = new Date().getFullYear();
 
   const legalLinks = [
+    { label: 'Contact', path: '/contact' },
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms of Service', path: '/terms' },
   ];

@@ -1,9 +1,16 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { useAuth } from '../../contexts/AuthContext';
 import Icon from '../AppIcon';
+
+const isNative = Capacitor.isNativePlatform();
+const homeTo = isNative ? '/onboarding' : '/landing-page';
 
 const OnboardingHeader = ({ currentStep = 1, totalSteps = 4 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
   const isRegisterPage = location?.pathname === '/register';
   const isPlanWizard = location?.pathname === '/plan-creation-wizard';
@@ -24,12 +31,16 @@ const OnboardingHeader = ({ currentStep = 1, totalSteps = 4 }) => {
 
   const stepInfo = getStepInfo();
 
+  const handleExit = () => {
+    navigate(currentUser ? '/daily-reading-dashboard' : homeTo);
+  };
+
   return (
     <>
       <header className="fixed top-4 left-4 right-4 z-navigation max-w-4xl mx-auto bg-card/90 backdrop-blur-md border border-border/80 rounded-full shadow-lg">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
-            <Link to="/landing-page" className="flex items-center space-x-2.5">
+            <Link to={currentUser ? '/daily-reading-dashboard' : homeTo} className="flex items-center space-x-2.5">
               <div className="text-primary flex items-center justify-center">
                 <Icon name="Anchor" size={24} color="var(--color-primary)" />
               </div>
@@ -62,13 +73,13 @@ const OnboardingHeader = ({ currentStep = 1, totalSteps = 4 }) => {
               </div>
             )}
 
-            <Link
-              to="/landing-page"
-              className="p-1.5 rounded-full hover:bg-muted/40 transition-gentle text-muted-foreground hover:text-foreground"
+            <button
+              onClick={handleExit}
+              className="p-1.5 rounded-full hover:bg-muted/40 transition-gentle text-muted-foreground hover:text-foreground cursor-pointer"
               aria-label="Exit onboarding"
             >
               <Icon name="X" size={16} />
-            </Link>
+            </button>
           </div>
         </div>
       </header>

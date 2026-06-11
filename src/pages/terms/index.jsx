@@ -1,8 +1,12 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
 import Icon from '../../components/AppIcon';
+
+const isNative = Capacitor.isNativePlatform();
+const homeTo = isNative ? '/onboarding' : '/landing-page';
 
 const Terms = () => {
   useEffect(() => {
@@ -20,7 +24,7 @@ const Terms = () => {
             </div>
             <span className="text-lg font-heading font-semibold text-foreground">Anchor</span>
           </Link>
-          <Link to="/landing-page" className="text-sm text-muted-foreground hover:text-foreground transition-gentle">
+          <Link to={homeTo} className="text-sm text-muted-foreground hover:text-foreground transition-gentle">
             ← Home
           </Link>
         </div>
@@ -100,7 +104,7 @@ const Terms = () => {
               <h2 className="text-xl font-heading font-semibold text-foreground mb-3">10. Contact</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 If you have questions about these Terms, please contact us at{' '}
-                <a href="mailto:support@anchor-app.com" className="text-accent hover:underline">support@anchor-app.com</a>.
+                <a href="mailto:anchor@biblescriptura.com" className="text-accent hover:underline">support@biblescriptura.com</a>.
               </p>
             </section>
           </div>

@@ -12,8 +12,8 @@ import {
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../../firebase';
+import { db } from '../../../firebase';
+import { compressImage } from '../../../utils/imageHelpers';
 
 const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const { currentUser } = useAuth();
@@ -85,12 +85,10 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
 
     setGroupPhotoUploading(true);
     try {
-      const storageRef = ref(storage, `group-photos/${currentGroup.id}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const base64Url = await compressImage(file, 400, 200, 0.7);
 
       const groupDocRef = doc(db, 'groups', currentGroup.id);
-      await updateDoc(groupDocRef, { photoURL: url });
+      await updateDoc(groupDocRef, { photoURL: base64Url });
     } catch (err) {
       console.error('Failed to upload group photo:', err);
     } finally {
@@ -155,15 +153,39 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
 
+    const messageText = newMessage.trim();
     try {
       await addDoc(collection(db, 'groups', currentGroup.id, 'messages'), {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.email.split('@')[0],
         senderPhoto: currentUser.photoURL || null,
-        text: newMessage.trim(),
+        text: messageText,
         timestamp: new Date().toISOString()
       });
       setNewMessage('');
+
+      // Send group chat message push notification via worker
+      try {
+        const pushRes = await fetch('https://anchor-email-worker.emaxstone12.workers.dev/group-message-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            groupId: currentGroup.id,
+            groupName: currentGroup.name,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || currentUser.email.split('@')[0],
+            text: messageText
+          })
+        });
+        if (!pushRes.ok) {
+          const errBody = await pushRes.text();
+          console.warn(`Group push notification failed (${pushRes.status}):`, errBody);
+        }
+      } catch (pushErr) {
+        console.warn('Failed to trigger group message push notification:', pushErr);
+      }
     } catch (err) {
       console.error('Error sending message:', err);
     }

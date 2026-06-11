@@ -19,6 +19,7 @@ import { generateDailyTimeline, BIBLE_BOOKS_DATA, calculateStreak } from '../../
 import { onSnapshot, doc, updateDoc, increment, setDoc, query, collection, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import GroupDetailsModal from '../group-management/components/GroupDetailsModal';
+import PullToRefresh from '../../components/ui/PullToRefresh';
 
 const DailyReadingDashboard = () => {
   const navigate = useNavigate();
@@ -320,9 +321,10 @@ const DailyReadingDashboard = () => {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <PageTransition className="min-h-screen bg-background">
+    <PageTransition className="min-h-screen bg-background w-full overflow-x-hidden">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 pb-20 md:pb-8">
+      <PullToRefresh onRefresh={async () => { window.location.reload(); }}>
+        <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 pb-20 md:pb-8">
 
         {/* ── Header ── */}
         <FadeIn delay={0.05}>
@@ -361,7 +363,7 @@ const DailyReadingDashboard = () => {
         {/* ── Context Switcher Toggle ── */}
         {currentUser?.activeGroupId && groupData && (
           <FadeIn delay={0.08}>
-            <div className="flex bg-muted/65 p-1 rounded-xl max-w-sm mb-6 border border-border/80">
+            <div className="flex bg-muted/65 p-1 rounded-xl w-full max-w-sm mb-6 border border-border/80">
               <button
                 onClick={() => setPlanContext('personal')}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
@@ -386,7 +388,7 @@ const DailyReadingDashboard = () => {
 
             {/* Quick Access Group Chat Banner */}
             {planContext === 'group' && groupData?.isChatEnabled !== false && (
-              <div className="mb-6 animate-fade-in max-w-sm">
+              <div className="mb-6 animate-fade-in w-full max-w-sm">
                 <button
                   onClick={() => handleOpenGroupDetails('discussion')}
                   className="w-full flex items-center justify-between p-3.5 bg-accent/5 hover:bg-accent/10 border border-accent/15 rounded-xl transition-all relative overflow-hidden group shadow-sm text-left"
@@ -579,7 +581,8 @@ const DailyReadingDashboard = () => {
             </FadeIn>
           </>
         )}
-      </main>
+        </main>
+      </PullToRefresh>
       <AppFooter />
       <MobileBottomNav />
 

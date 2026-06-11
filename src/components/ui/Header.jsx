@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { openBible } from '../../utils/openBible';
 
 
 const Header = () => {
@@ -16,7 +17,7 @@ const Header = () => {
     { label: 'Progress', path: '/progress-reports', icon: 'TrendingUp' },
     { label: 'Groups', path: '/group-management', icon: 'Users' },
     { label: 'Plans', path: '/plan-creation-wizard', icon: 'BookOpen' },
-    { label: 'Read Bible', path: 'https://web.biblescriptura.com', icon: 'BookOpen', isExternal: true },
+    { label: 'Read Bible', path: '#', icon: 'BookOpen', isExternal: true, onAction: openBible },
     { label: 'Research', path: 'https://folio.biblescriptura.com', icon: 'Search', isExternal: true },
   ];
 
@@ -68,6 +69,16 @@ const Header = () => {
             <nav className="hidden md:flex items-center space-x-1">
               {navigationItems?.map((item) => 
                 item.isExternal ? (
+                  item.onAction ? (
+                    <button
+                      key={item?.label}
+                      onClick={item.onAction}
+                      className="px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-250 text-muted-foreground hover:text-foreground hover:bg-muted/40 flex items-center gap-1"
+                    >
+                      <span>{item?.label}</span>
+                      <Icon name="ExternalLink" size={12} className="opacity-60" />
+                    </button>
+                  ) : (
                   <a
                     key={item?.path}
                     href={item?.path}
@@ -78,6 +89,7 @@ const Header = () => {
                     <span>{item?.label}</span>
                     <Icon name="ExternalLink" size={12} className="opacity-60" />
                   </a>
+                  )
                 ) : (
                   <Link
                     key={item?.path}
@@ -174,6 +186,16 @@ const Header = () => {
               <nav className="space-y-1">
                 {navigationItems?.map((item) => 
                   item.isExternal ? (
+                    item.onAction ? (
+                      <button
+                        key={item?.label}
+                        onClick={() => { item.onAction(); handleNavClick(); }}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-gentle text-sm font-semibold text-foreground hover:bg-muted"
+                      >
+                        <span>{item?.label}</span>
+                        <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
+                      </button>
+                    ) : (
                     <a
                       key={item?.path}
                       href={item?.path}
@@ -185,6 +207,7 @@ const Header = () => {
                       <span>{item?.label}</span>
                       <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
                     </a>
+                    )
                   ) : (
                     <Link
                       key={item?.path}

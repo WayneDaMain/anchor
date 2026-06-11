@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Icon from '../../../components/AppIcon';
+import { openBible } from '../../../utils/openBible';
 
 const QuickActions = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const QuickActions = () => {
       label: 'Read Bible',
       icon: 'BookOpen',
       colorClass: 'text-accent bg-accent/10 group-hover:bg-accent/20',
-      onClick: () => window.open('https://web.biblescriptura.com', '_blank', 'noopener,noreferrer')
+      onClick: openBible
     },
     {
       id: 4,
@@ -42,7 +43,7 @@ const QuickActions = () => {
       <h2 className="text-lg font-heading font-bold text-foreground mb-4">
         Quick Actions
       </h2>
-      <div className="grid grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {actions?.map((action) => (
           <motion.button
             key={action?.id}
@@ -64,4 +65,4 @@ const QuickActions = () => {
   );
 };
 
-export default QuickActions;
+export default QuickActions;
