@@ -142,3 +142,30 @@ export const generateDailyTimeline = (plan) => {
 
   return days;
 };
+
+export const calculateStreak = (completedDates, todayStr, yesterdayStr) => {
+  if (!completedDates || completedDates.length === 0) return 0;
+
+  const uniqueDates = Array.from(new Set(completedDates)).sort().reverse();
+  const mostRecent = uniqueDates[0];
+
+  if (mostRecent !== todayStr && mostRecent !== yesterdayStr) {
+    return 0;
+  }
+
+  let streak = 1;
+  for (let i = 0; i < uniqueDates.length - 1; i++) {
+    const d1 = new Date(uniqueDates[i] + 'T12:00:00');
+    const d2 = new Date(uniqueDates[i + 1] + 'T12:00:00');
+    const diffTime = d1 - d2;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      streak++;
+    } else if (diffDays === 0) {
+      continue;
+    } else {
+      break;
+    }
+  }
+  return streak;
+};

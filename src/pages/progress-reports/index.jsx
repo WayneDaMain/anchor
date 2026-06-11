@@ -8,6 +8,7 @@ import AppFooter from '../../components/ui/AppFooter';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
+import { calculateStreak } from '../../utils/planHelpers';
 import ProgressOverview from './components/ProgressOverview';
 import StatisticalSummary from './components/StatisticalSummary';
 import ParticipationCalendar from './components/ParticipationCalendar';
@@ -58,7 +59,15 @@ const ProgressReports = () => {
     }
   };
 
-  const progressStats = planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, currentStreak: 0 };
+  const completedDates = planData?.progressStats?.completedDates || [];
+  const todayDateStr = new Date().toLocaleDateString('en-CA');
+  const yesterdayDateStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
+  const calculatedStreak = calculateStreak(completedDates, todayDateStr, yesterdayDateStr);
+
+  const progressStats = {
+    ...(planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, completedDates: [] }),
+    currentStreak: calculatedStreak
+  };
 
   const progressData = {
     completionPercentage: planData?.totalDays ? Math.round((progressStats?.daysCompleted / planData?.totalDays) * 100) : 0,
@@ -100,7 +109,7 @@ const ProgressReports = () => {
                   variant="outline"
                   onClick={handleEmailReport}
                   disabled={sendingEmail}
-                  className="border border-border/80 bg-card text-foreground hover:bg-muted/50 rounded-xl px-4 py-2 font-semibold text-sm flex items-center gap-2 shadow-sm"
+                  className="border border-border/80 bg-card text-foreground hover:bg-muted/50 hover:text-foreground rounded-xl px-4 py-2 font-semibold text-sm flex items-center gap-2 shadow-sm"
                 >
                   <Icon name={sendingEmail ? "Loader2" : "Mail"} size={16} className={sendingEmail ? "animate-spin" : ""} />
                   <span>{sendingEmail ? "Sending..." : "Email PDF Report"}</span>
@@ -109,7 +118,7 @@ const ProgressReports = () => {
               <Link to="/daily-reading-dashboard">
                 <Button
                   variant="outline"
-                  className="border border-border/80 bg-card text-foreground hover:bg-muted/50 rounded-xl px-4 py-2 font-semibold text-sm flex items-center gap-2 shadow-sm"
+                  className="border border-border/80 bg-card text-foreground hover:bg-muted/50 hover:text-foreground rounded-xl px-4 py-2 font-semibold text-sm flex items-center gap-2 shadow-sm"
                 >
                   <Icon name="ArrowLeft" size={16} />
                   <span>Dashboard</span>

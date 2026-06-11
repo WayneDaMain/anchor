@@ -15,7 +15,7 @@ import VerseOfTheDay from './components/VerseOfTheDay';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateDailyTimeline, BIBLE_BOOKS_DATA } from '../../utils/planHelpers';
+import { generateDailyTimeline, BIBLE_BOOKS_DATA, calculateStreak } from '../../utils/planHelpers';
 import { onSnapshot, doc, updateDoc, increment, setDoc, query, collection, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import GroupDetailsModal from '../group-management/components/GroupDetailsModal';
@@ -136,14 +136,25 @@ const DailyReadingDashboard = () => {
   const activePlan = planContext === 'personal' ? (currentUser?.activePlan || null) : (groupData?.plan || null);
   const planData = activePlan;
 
+  const completedDates = planContext === 'personal'
+    ? (planData?.progressStats?.completedDates || [])
+    : (memberProgress?.completedDates || []);
+
+  const todayDateStr = new Date().toLocaleDateString('en-CA');
+  const yesterdayDateStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
+  const calculatedStreak = calculateStreak(completedDates, todayDateStr, yesterdayDateStr);
+
   const progressStats = planContext === 'personal' 
-    ? (planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, currentStreak: 0, completedDates: [] })
+    ? {
+        ...(planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, completedDates: [] }),
+        currentStreak: calculatedStreak
+      }
     : {
         daysCompleted: memberProgress?.daysCompleted || 0,
         chaptersCompleted: (memberProgress?.daysCompleted || 0) * 3,
         booksCompleted: 0,
-        currentStreak: 0,
-        completedDates: memberProgress?.completedDates || []
+        currentStreak: calculatedStreak,
+        completedDates: completedDates
       };
 
   // Generate real daily timeline using our new helper utility
@@ -185,7 +196,6 @@ const DailyReadingDashboard = () => {
   const allChapterIds = todayAssignments?.flatMap(a => a?.chapters?.map(c => c?.id));
   const isAllCompleted = allChapterIds?.length === 0 || (allChapterIds?.length > 0 && allChapterIds?.every(id => completedChapters?.includes(id)));
 
-  const todayDateStr = new Date().toLocaleDateString('en-CA');
   const hasCompletedToday = progressStats.completedDates?.includes(todayDateStr);
 
   const handleChapterToggle = async (chapterId) => {
@@ -240,6 +250,7 @@ const DailyReadingDashboard = () => {
     setIsCanceling(true);
     try {
       const todayDateStr = new Date().toLocaleDateString('en-CA');
+      const yesterdayDateStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
       const nextDaysCompleted = progressStats.daysCompleted + 1;
       const nextChaptersCompleted = progressStats.chaptersCompleted + todayAssignments.flatMap(a => a.chapters).length;
       
@@ -275,7 +286,7 @@ const DailyReadingDashboard = () => {
             chaptersCompleted: nextChaptersCompleted,
             booksCompleted: nextBooksCompleted,
             completedDates: updatedDates,
-            currentStreak: progressStats.currentStreak + 1
+            currentStreak: calculateStreak(updatedDates, todayDateStr, yesterdayDateStr)
           }
         };
 
@@ -435,7 +446,7 @@ const DailyReadingDashboard = () => {
                 <Button
                   variant="outline"
                   onClick={() => navigate('/group-management')}
-                  className="border border-border bg-card text-foreground hover:bg-muted/50 px-6 py-3 rounded-xl font-semibold flex items-center gap-2"
+                  className="border border-border bg-card text-foreground hover:bg-muted/50 hover:text-foreground px-6 py-3 rounded-xl font-semibold flex items-center gap-2"
                 >
                   <Icon name="Users" size={16} />
                   <span>Browse Groups</span>
@@ -475,7 +486,7 @@ const DailyReadingDashboard = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowCancelConfirm(true)}
-                  className="border border-border bg-card text-foreground hover:bg-muted/50 px-6 py-3 rounded-xl font-semibold flex items-center gap-2"
+                  className="border border-border bg-card text-foreground hover:bg-muted/50 hover:text-foreground px-6 py-3 rounded-xl font-semibold flex items-center gap-2"
                 >
                   <Icon name="Trash2" size={16} />
                   <span>Clear Completed Plan</span>
