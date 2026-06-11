@@ -187,6 +187,24 @@ const PlanCreationWizard = () => {
         };
 
         await updateActivePlan(newPlan);
+
+        // Trigger plan started email notification
+        try {
+          fetch('https://anchor-email-worker.emaxstone12.workers.dev/plan-started', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: currentUser.email,
+              name: currentUser.displayName || currentUser.fullName || 'there',
+              planName: newPlan.name
+            })
+          });
+        } catch (emailErr) {
+          console.warn('Failed to send plan started email:', emailErr.message);
+        }
+
         // 800ms artificial delay for a premium transition effect
         await new Promise(resolve => setTimeout(resolve, 800));
         navigate('/daily-reading-dashboard');

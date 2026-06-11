@@ -278,6 +278,23 @@ const GroupCreationWizard = () => {
         // Set user's active group
         await updateUserProfile({ activeGroupId: groupId });
 
+        // Trigger group joined email notification
+        try {
+          fetch('https://anchor-email-worker.emaxstone12.workers.dev/group-joined', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: currentUser.email,
+              name: currentUser.displayName || currentUser.email.split('@')[0],
+              groupName: groupData.name
+            })
+          });
+        } catch (emailErr) {
+          console.warn('Failed to send group joined email:', emailErr.message);
+        }
+
         await new Promise(resolve => setTimeout(resolve, 800));
         navigate('/group-management');
       } catch (err) {

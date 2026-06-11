@@ -139,6 +139,23 @@ const GroupManagement = () => {
       });
 
       await updateUserProfile({ activeGroupId: group.id });
+
+      // Trigger group joined email notification
+      try {
+        fetch('https://anchor-email-worker.emaxstone12.workers.dev/group-joined', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: currentUser.email,
+            name: currentUser.displayName || currentUser.email.split('@')[0],
+            groupName: group.name
+          })
+        });
+      } catch (emailErr) {
+        console.warn('Failed to send group joined email:', emailErr.message);
+      }
     } catch (err) {
       console.error('Error joining group:', err);
       alert('Failed to join group. Please try again.');
@@ -178,6 +195,23 @@ const GroupManagement = () => {
 
       await updateUserProfile({ activeGroupId: group.id });
       setShowJoinCodeModal(false);
+
+      // Trigger group joined email notification
+      try {
+        fetch('https://anchor-email-worker.emaxstone12.workers.dev/group-joined', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: currentUser.email,
+            name: currentUser.displayName || currentUser.email.split('@')[0],
+            groupName: group.name
+          })
+        });
+      } catch (emailErr) {
+        console.warn('Failed to send group joined email:', emailErr.message);
+      }
     } catch (err) {
       console.error('Error joining by code:', err);
       alert('Failed to join group. Please try again.');

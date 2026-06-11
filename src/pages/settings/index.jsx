@@ -29,6 +29,12 @@ const Settings = () => {
   const [morningHour, setMorningHour] = useState(currentUser?.emailSettings?.morningHour || 7);
   const [warningHour, setWarningHour] = useState(currentUser?.emailSettings?.warningHour || 21);
 
+  // Custom time picker states & refs
+  const [showMorningPicker, setShowMorningPicker] = useState(false);
+  const [showWarningPicker, setShowWarningPicker] = useState(false);
+  const morningPickerRef = useRef(null);
+  const warningPickerRef = useRef(null);
+
   useEffect(() => {
     if (currentUser?.emailSettings) {
       setMorningReminders(currentUser.emailSettings.morningReminders !== false);
@@ -37,6 +43,27 @@ const Settings = () => {
       setWarningHour(currentUser.emailSettings.warningHour || 21);
     }
   }, [currentUser?.emailSettings]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (morningPickerRef.current && !morningPickerRef.current.contains(event.target)) {
+        setShowMorningPicker(false);
+      }
+      if (warningPickerRef.current && !warningPickerRef.current.contains(event.target)) {
+        setShowWarningPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const formatHour = (h) => {
+    if (h === 0) return '12:00 AM';
+    if (h === 12) return '12:00 PM';
+    return h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
+  };
 
   const handleToggleMorning = async (val) => {
     setMorningReminders(val);
@@ -70,8 +97,7 @@ const Settings = () => {
     }
   };
 
-  const handleMorningHourChange = async (e) => {
-    const hr = parseInt(e.target.value);
+  const handleMorningHourChange = async (hr) => {
     setMorningHour(hr);
     try {
       await updateUserProfile({
@@ -87,8 +113,7 @@ const Settings = () => {
     }
   };
 
-  const handleWarningHourChange = async (e) => {
-    const hr = parseInt(e.target.value);
+  const handleWarningHourChange = async (hr) => {
     setWarningHour(hr);
     try {
       await updateUserProfile({
@@ -270,19 +295,92 @@ const Settings = () => {
                     <span className="text-sm font-semibold text-foreground block">Morning Daily Bread Alert</span>
                     <span className="text-xs text-muted-foreground">Receive your assigned Bible chapters directly in your inbox to start the day.</span>
                     {morningReminders && (
-                      <div className="mt-2.5 flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Delivery time:</span>
-                        <select
-                          value={morningHour}
-                          onChange={handleMorningHourChange}
-                          className="px-2.5 py-1 border border-border rounded-lg bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-accent"
-                        >
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <option key={i} value={i}>
-                              {i === 0 ? '12:00 AM' : i === 12 ? '12:00 PM' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Icon name="Clock" size={12} />
+                          <span>Delivery time:</span>
+                        </span>
+                        
+                        <div className="flex items-center gap-1 bg-muted/40 p-1 border border-border rounded-xl">
+                          {/* Hour Selector */}
+                          <div className="relative" ref={morningPickerRef}>
+                            <button
+                              type="button"
+                              onClick={() => setShowMorningPicker(!showMorningPicker)}
+                              className="px-2.5 py-1 text-foreground text-xs font-semibold hover:bg-muted/80 rounded-lg flex items-center gap-1 transition-all select-none"
+                            >
+                              <span>{morningHour === 0 || morningHour === 12 ? 12 : morningHour > 12 ? morningHour - 12 : morningHour}:00</span>
+                              <Icon name="ChevronDown" size={10} className={`text-muted-foreground transition-transform ${showMorningPicker ? 'rotate-180' : ''}`} />
+                            </button>
+                            
+                            {showMorningPicker && (
+                              <div className="absolute left-0 mt-1.5 w-24 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg z-50 py-1 scrollbar-none animate-in fade-in slide-in-from-top-1 duration-150">
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const displayHr = i + 1; // 1 to 12
+                                  const isPm = morningHour >= 12;
+                                  const targetH = isPm 
+                                    ? (displayHr === 12 ? 12 : displayHr + 12)
+                                    : (displayHr === 12 ? 0 : displayHr);
+                                    
+                                  const isSelected = (morningHour === 0 || morningHour === 12 ? 12 : morningHour > 12 ? morningHour - 12 : morningHour) === displayHr;
+                                  
+                                  return (
+                                    <button
+                                      key={displayHr}
+                                      type="button"
+                                      onClick={() => {
+                                        handleMorningHourChange(targetH);
+                                        setShowMorningPicker(false);
+                                      }}
+                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${
+                                        isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
+                                      }`}
+                                    >
+                                      {displayHr}:00
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Divider */}
+                          <div className="w-[1px] h-3 bg-border" />
+
+                          {/* AM/PM Segment */}
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (morningHour >= 12) {
+                                  handleMorningHourChange(morningHour === 12 ? 0 : morningHour - 12);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
+                                morningHour < 12 
+                                  ? 'bg-card text-foreground shadow-sm' 
+                                  : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (morningHour < 12) {
+                                  handleMorningHourChange(morningHour === 0 ? 12 : morningHour + 12);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
+                                morningHour >= 12 
+                                  ? 'bg-card text-foreground shadow-sm' 
+                                  : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              PM
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -308,19 +406,92 @@ const Settings = () => {
                     <span className="text-sm font-semibold text-foreground block">Evening Streak Warning</span>
                     <span className="text-xs text-muted-foreground">Get alerted if you are at risk of breaking your reading streak.</span>
                     {streakWarnings && (
-                      <div className="mt-2.5 flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Delivery time:</span>
-                        <select
-                          value={warningHour}
-                          onChange={handleWarningHourChange}
-                          className="px-2.5 py-1 border border-border rounded-lg bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-accent"
-                        >
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <option key={i} value={i}>
-                              {i === 0 ? '12:00 AM' : i === 12 ? '12:00 PM' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Icon name="Clock" size={12} />
+                          <span>Delivery time:</span>
+                        </span>
+                        
+                        <div className="flex items-center gap-1 bg-muted/40 p-1 border border-border rounded-xl">
+                          {/* Hour Selector */}
+                          <div className="relative" ref={warningPickerRef}>
+                            <button
+                              type="button"
+                              onClick={() => setShowWarningPicker(!showWarningPicker)}
+                              className="px-2.5 py-1 text-foreground text-xs font-semibold hover:bg-muted/80 rounded-lg flex items-center gap-1 transition-all select-none"
+                            >
+                              <span>{warningHour === 0 || warningHour === 12 ? 12 : warningHour > 12 ? warningHour - 12 : warningHour}:00</span>
+                              <Icon name="ChevronDown" size={10} className={`text-muted-foreground transition-transform ${showWarningPicker ? 'rotate-180' : ''}`} />
+                            </button>
+                            
+                            {showWarningPicker && (
+                              <div className="absolute left-0 mt-1.5 w-24 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg z-50 py-1 scrollbar-none animate-in fade-in slide-in-from-top-1 duration-150">
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const displayHr = i + 1; // 1 to 12
+                                  const isPm = warningHour >= 12;
+                                  const targetH = isPm 
+                                    ? (displayHr === 12 ? 12 : displayHr + 12)
+                                    : (displayHr === 12 ? 0 : displayHr);
+                                    
+                                  const isSelected = (warningHour === 0 || warningHour === 12 ? 12 : warningHour > 12 ? warningHour - 12 : warningHour) === displayHr;
+                                  
+                                  return (
+                                    <button
+                                      key={displayHr}
+                                      type="button"
+                                      onClick={() => {
+                                        handleWarningHourChange(targetH);
+                                        setShowWarningPicker(false);
+                                      }}
+                                      className={`w-full px-3 py-1 text-left text-xs rounded hover:bg-muted active:scale-95 transition-all ${
+                                        isSelected ? 'bg-accent/15 text-accent font-semibold' : 'text-foreground'
+                                      }`}
+                                    >
+                                      {displayHr}:00
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Divider */}
+                          <div className="w-[1px] h-3 bg-border" />
+
+                          {/* AM/PM Segment */}
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (warningHour >= 12) {
+                                  handleWarningHourChange(warningHour === 12 ? 0 : warningHour - 12);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
+                                warningHour < 12 
+                                  ? 'bg-card text-foreground shadow-sm' 
+                                  : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (warningHour < 12) {
+                                  handleWarningHourChange(warningHour === 0 ? 12 : warningHour + 12);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${
+                                warningHour >= 12 
+                                  ? 'bg-card text-foreground shadow-sm' 
+                                  : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              PM
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

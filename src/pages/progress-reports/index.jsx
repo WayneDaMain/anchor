@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
@@ -16,6 +16,47 @@ const ProgressReports = () => {
   const { currentUser } = useAuth();
   const planData = currentUser?.activePlan || null;
   const hasPlan = !!planData;
+
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [modalState, setModalState] = useState({ isOpen: false, type: 'success', message: '' });
+
+  const handleEmailReport = async () => {
+    if (!currentUser?.email || !currentUser?.uid) return;
+    setSendingEmail(true);
+    try {
+      const response = await fetch('https://anchor-email-worker.emaxstone12.workers.dev/progress-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: currentUser.email,
+          userId: currentUser.uid
+        })
+      });
+      if (response.ok) {
+        setModalState({
+          isOpen: true,
+          type: 'success',
+          message: 'Your PDF progress report has been successfully sent to your email!'
+        });
+      } else {
+        setModalState({
+          isOpen: true,
+          type: 'error',
+          message: 'Failed to send progress report email. Please try again later.'
+        });
+      }
+    } catch (err) {
+      setModalState({
+        isOpen: true,
+        type: 'error',
+        message: 'An error occurred. Please try again.'
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const progressStats = planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, currentStreak: 0 };
 
@@ -53,7 +94,18 @@ const ProgressReports = () => {
               </p>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasPlan && (
+                <Button
+                  variant="outline"
+                  onClick={handleEmailReport}
+                  disabled={sendingEmail}
+                  className="border border-border/80 bg-card text-foreground hover:bg-muted/50 rounded-xl px-4 py-2 font-semibold text-sm flex items-center gap-2 shadow-sm"
+                >
+                  <Icon name={sendingEmail ? "Loader2" : "Mail"} size={16} className={sendingEmail ? "animate-spin" : ""} />
+                  <span>{sendingEmail ? "Sending..." : "Email PDF Report"}</span>
+                </Button>
+              )}
               <Link to="/daily-reading-dashboard">
                 <Button
                   variant="outline"
@@ -163,6 +215,40 @@ const ProgressReports = () => {
 
       <AppFooter />
       <MobileBottomNav />
+
+      {/* Custom Modal Dialog */}
+      {modalState.isOpen && (
+        <div className="fixed inset-0 bg-background/60 backdrop-blur-sm z-modal flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl shadow-xl p-6 max-w-sm w-full text-center relative overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Top Accent Strip */}
+            <div className={`absolute top-0 left-0 right-0 h-1.5 ${modalState.type === 'success' ? 'bg-emerald-500' : 'bg-destructive'}`} />
+            
+            {/* Circular Icon Wrapper */}
+            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${modalState.type === 'success' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/15 text-destructive'}`}>
+              <Icon name={modalState.type === 'success' ? 'Check' : 'X'} size={24} />
+            </div>
+            
+            {/* Title */}
+            <h3 className="text-lg font-bold text-foreground mb-1">
+              {modalState.type === 'success' ? 'Email Sent!' : 'Send Failed'}
+            </h3>
+            
+            {/* Message */}
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              {modalState.message}
+            </p>
+            
+            {/* Dismiss Button */}
+            <Button
+              variant={modalState.type === 'success' ? 'default' : 'outline'}
+              onClick={() => setModalState({ ...modalState, isOpen: false })}
+              className="w-full rounded-xl font-semibold border border-border/80"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 };

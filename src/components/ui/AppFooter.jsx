@@ -4,13 +4,6 @@ import { Link } from 'react-router-dom';
 const AppFooter = () => {
   const currentYear = new Date().getFullYear();
 
-  const navLinks = [
-    { label: 'Dashboard', path: '/daily-reading-dashboard' },
-    { label: 'Progress', path: '/progress-reports' },
-    { label: 'Groups', path: '/group-management' },
-    { label: 'Settings', path: '/settings' },
-  ];
-
   const legalLinks = [
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms of Service', path: '/terms' },
@@ -42,19 +35,6 @@ const AppFooter = () => {
             <img src="/anchor.png" alt="Anchor" className="h-7 w-7 object-contain" />
             <span className="text-base font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
           </Link>
-
-          {/* Nav Links */}
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {navLinks.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
 
           {/* Legal Links */}
           <div className="flex items-center gap-5">

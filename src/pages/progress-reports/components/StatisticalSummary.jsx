@@ -1,5 +1,4 @@
 import React from 'react';
-import Icon from '../../../components/AppIcon';
 
 const StatisticalSummary = ({ statistics }) => {
   const {
@@ -11,86 +10,59 @@ const StatisticalSummary = ({ statistics }) => {
 
   const stats = [
     {
-      icon: 'Calendar',
       label: 'Total Reading Days',
       value: totalReadingDays,
-      description: 'Days with completed readings',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      description: 'Days with completed readings'
     },
     {
-      icon: 'TrendingUp',
       label: 'Daily Average',
       value: `${averageDailyProgress} chapters`,
-      description: 'Average chapters per day',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      description: 'Average chapters per day'
     },
     {
-      icon: 'CalendarCheck',
       label: 'Projected Completion',
       value: projectedCompletion,
-      description: 'Estimated finish date',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      description: 'Estimated finish date'
     },
     {
-      icon: 'Star',
       label: 'Next Milestone',
       value: upcomingMilestone?.name,
-      description: `${upcomingMilestone?.remaining} chapters away`,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      description: `${upcomingMilestone?.remaining} chapters away`
     }
   ];
 
   return (
-    <div className="bg-card rounded-lg p-4 md:p-6 lg:p-8 shadow-md">
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h2 className="text-xl md:text-2xl lg:text-3xl font-heading font-semibold text-foreground">
+    <div className="bg-card rounded-[2rem] border border-border/80 p-5 md:p-6 shadow-sm">
+      <div className="mb-4 md:mb-5">
+        <h2 className="text-lg md:text-xl font-heading font-extrabold text-foreground tracking-tight">
           Statistical Summary
         </h2>
-        <div className="w-10 h-10 md:w-12 md:h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-          <Icon name="BarChart3" size={20} color="var(--color-accent)" />
-        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats?.map((stat, index) => (
           <div
             key={index}
-            className="bg-background rounded-lg p-4 md:p-5 lg:p-6 border border-border transition-gentle hover:shadow-md"
+            className="bg-background/40 rounded-xl p-4 border border-border/60 transition-gentle hover:shadow-sm"
           >
-            <div className="flex items-start space-x-3 md:space-x-4">
-              <div className={`w-10 h-10 md:w-12 md:h-12 ${stat?.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                <Icon name={stat?.icon} size={20} className={stat?.color} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm text-muted-foreground mb-1">
-                  {stat?.label}
-                </p>
-                <p className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground mb-1 break-words">
-                  {stat?.value}
-                </p>
-                <p className="text-xs md:text-sm text-muted-foreground">
-                  {stat?.description}
-                </p>
-              </div>
-            </div>
+            <p className="text-[10px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+              {stat?.label}
+            </p>
+            <p className="text-lg md:text-xl font-heading font-extrabold text-foreground leading-tight">
+              {stat?.value}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stat?.description}
+            </p>
           </div>
         ))}
       </div>
-      <div className="mt-6 md:mt-8 p-4 md:p-5 bg-accent/5 rounded-lg border border-accent/20">
-        <div className="flex items-start space-x-3">
-          <Icon name="TrendingUp" size={20} className="text-accent flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm md:text-base font-medium text-foreground mb-1">
-              Excellent Consistency
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Your reading pace is steady. At this rate, you'll complete your plan by {projectedCompletion}. Keep maintaining this rhythm!
-            </p>
-          </div>
-        </div>
+      <div className="mt-5 p-4 bg-accent/5 rounded-xl border border-accent/15">
+        <p className="text-sm font-semibold text-foreground mb-0.5">
+          Excellent Consistency
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Your reading pace is steady. At this rate, you'll complete your plan by {projectedCompletion}. Keep maintaining this rhythm!
+        </p>
       </div>
     </div>
   );
