@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { compressImage } from '../../../utils/imageHelpers';
+import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 
 const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const { currentUser } = useAuth();
@@ -27,6 +28,7 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const [editedDescription, setEditedDescription] = useState(group?.description || '');
   const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [isTogglingPrivacy, setIsTogglingPrivacy] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState(null);
 
   useEffect(() => {
     if (currentGroup) {
@@ -48,15 +50,29 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleDeleteGroup = async () => {
-    if (!window.confirm("Are you sure you want to end and delete this group? This action is permanent and cannot be undone.")) return;
-    try {
-      await deleteDoc(doc(db, 'groups', currentGroup.id));
-      onClose();
-    } catch (err) {
-      console.error("Failed to delete group:", err);
-      alert("Failed to delete group. Please try again.");
-    }
+  const handleDeleteGroup = () => {
+    setConfirmConfig({
+      title: 'End & Delete Group?',
+      message: 'Are you sure you want to end and delete this group? This action is permanent and cannot be undone.',
+      confirmText: 'Delete Group',
+      cancelText: 'Cancel',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'groups', currentGroup.id));
+          onClose();
+        } catch (err) {
+          console.error("Failed to delete group:", err);
+          setConfirmConfig({
+            title: 'Delete Failed',
+            message: 'Failed to delete group. Please try again.',
+            confirmText: 'OK',
+            cancelText: null,
+            type: 'danger'
+          });
+        }
+      }
+    });
   };
 
   const handleSaveDetails = async () => {
@@ -70,7 +86,13 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
       });
     } catch (err) {
       console.error("Failed to update group details:", err);
-      alert("Failed to update group details. Please try again.");
+      setConfirmConfig({
+        title: 'Save Failed',
+        message: 'Failed to update group details. Please try again.',
+        confirmText: 'OK',
+        cancelText: null,
+        type: 'danger'
+      });
     } finally {
       setIsSavingDetails(false);
     }
@@ -233,7 +255,8 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   const sortedMembers = [...members].sort((a, b) => (b.daysCompleted || 0) - (a.daysCompleted || 0));
 
   return (
-    <AnimatePresence>
+    <>
+      <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -695,7 +718,20 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
+
+    <ConfirmationModal
+      isOpen={!!confirmConfig}
+      onClose={() => setConfirmConfig(null)}
+      title={confirmConfig?.title}
+      message={confirmConfig?.message}
+      confirmText={confirmConfig?.confirmText}
+      cancelText={confirmConfig?.cancelText}
+      type={confirmConfig?.type}
+      onConfirm={confirmConfig?.onConfirm}
+      onCancel={confirmConfig?.onCancel}
+    />
+  </>
+);
 };
 
 export default GroupDetailsModal;
