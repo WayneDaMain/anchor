@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "anchor.scriptura",
+    "sha256_cert_fingerprints": [
+      "E0:5D:15:78:37:D3:5A:84:2B:9F:49:A8:8C:67:AB:8E:4A:77:C2:2E:C6:15:2E:5A:96:ED:FC:F7:36:64:61:CB"
+    ]
+  }
+}]

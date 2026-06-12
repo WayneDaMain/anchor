@@ -1,6 +1,7 @@
-import React from "react";
-import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes as RouterRoutes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import ProtectedRoute from "components/ProtectedRoute";
@@ -23,10 +24,50 @@ import Contact from './pages/contact';
 
 const isNative = Capacitor.isNativePlatform();
 
+const DeepLinkHandler = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isNative) return;
+
+    // Handle deep links
+    const handleDeepLink = async (url) => {
+      console.log("Received deep link:", url);
+      const path = new URL(url).pathname;
+      // Navigate to the path in the app
+      if (path && path !== "/") {
+        navigate(path);
+      }
+    };
+
+    // Get initial deep link
+    const getInitialUrl = async () => {
+      const { url } = await CapApp.getLaunchUrl();
+      if (url) {
+        handleDeepLink(url);
+      }
+    };
+
+    // Listen for deep links while app is running
+    const listener = CapApp.addListener("appUrlOpen", (data) => {
+      handleDeepLink(data.url);
+    });
+
+    getInitialUrl();
+
+    return () => {
+      listener.remove();
+    };
+  }, [navigate]);
+
+  return null;
+};
+
 const Routes = () => {
   return (
     <BrowserRouter>
       <ErrorBoundary>
+      <DeepLinkHandler />
       <ScrollToTop />
       <RouterRoutes>
         {/* Public pages (redirect to dashboard if logged in) */}
