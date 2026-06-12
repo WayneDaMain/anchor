@@ -69,7 +69,7 @@ export default {
         }
         await sendPlanStartedEmail(email, name || "there", planName, env.RESEND_API_KEY);
         if (userId) {
-          await sendPushNotification(userId, "New reading plan started! 📖", `You started ${planName}. Keep your streak alive!`, env);
+          await sendPushNotification(userId, "New reading plan started!", `You started ${planName}. Keep your streak alive!`, env);
         }
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -672,7 +672,7 @@ async function sendPlanStartedEmail(email, name, planName, resendApiKey) {
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
       <div style="text-align: center; margin-bottom: 25px;">
         <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
-        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">New plan started! 📖</h2>
+        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">New plan started!</h2>
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
       <p style="font-size: 15px; line-height: 1.6;">You have started your new personal reading plan: <strong>${planName}</strong>.</p>
@@ -685,7 +685,7 @@ async function sendPlanStartedEmail(email, name, planName, resendApiKey) {
     </div>
   `;
 
-  await sendEmail(email, "New Reading Plan Started! 📖", planStartedHtml, resendApiKey);
+  await sendEmail(email, "New Reading Plan Started!", planStartedHtml, resendApiKey);
 }
 
 async function sendGroupJoinedEmail(email, name, groupName, resendApiKey) {
