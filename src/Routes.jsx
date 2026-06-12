@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes as RouterRoutes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes as RouterRoutes, Route, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import ScrollToTop from "components/ScrollToTop";
