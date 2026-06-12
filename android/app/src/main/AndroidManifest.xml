@@ -26,6 +26,13 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="anchor.biblescriptura.com"/>
             </intent-filter>
+            <!-- Custom scheme for fallback deep linking -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="anchor"/>
+            </intent-filter>
         </activity>
 
         <provider
@@ -43,5 +50,13 @@
 
     <queries>
         <package android:name="scriptura.app" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
     </queries>
 </manifest>
