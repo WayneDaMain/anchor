@@ -125,7 +125,7 @@ const Privacy = () => {
               <h2 className="text-xl font-heading font-semibold text-foreground mb-3">11. Contact</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 For privacy-related questions or requests, contact us at{' '}
-                <a href="mailto:anchor@biblescriptura.com" className="text-accent hover:underline">privacy@biblescriptura.com</a>.
+                <a href="mailto:anchor@biblescriptura.com" className="text-accent hover:underline">anchor@biblescriptura.com</a>.
               </p>
             </section>
           </div>

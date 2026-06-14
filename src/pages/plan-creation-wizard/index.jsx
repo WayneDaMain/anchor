@@ -12,6 +12,7 @@ import ScopeSelection from './components/ScopeSelection';
 import DurationSelection from './components/DurationSelection';
 import StyleSelection from './components/StyleSelection';
 import PlanPreview from './components/PlanPreview';
+import { BIBLE_BOOKS_DATA } from '../../utils/planHelpers';
 
 const PlanCreationWizard = () => {
   const navigate = useNavigate();
@@ -118,16 +119,30 @@ const PlanCreationWizard = () => {
         setValidationError('Please select a duration to continue');
         return false;
       }
+
+      const totalChapters = BIBLE_BOOKS_DATA.filter(b => planData?.selectedBooks?.includes(b.name)).reduce((acc, curr) => acc + curr.chapters, 0) || (planData?.selectedScope === 'entire' ? 1189 : planData?.selectedScope === 'old-testament' ? 929 : planData?.selectedScope === 'new-testament' ? 260 : 0);
+
+      const durationDays = planData.selectedDuration === 'custom'
+        ? parseInt(planData.customDays)
+        : {
+            '3-months': 90,
+            '6-months': 180,
+            '1-year': 365,
+            '2-years': 730
+          }[planData.selectedDuration] || 365;
+
       if (planData?.selectedDuration === 'custom') {
         const days = parseInt(planData?.customDays);
-        if (!days || days < 30) {
-          setValidationError('Please enter at least 30 days for your custom duration');
+        const minDays = (planData?.selectedScope === 'custom' && totalChapters < 30) ? 1 : 30;
+        if (!days || days < minDays) {
+          setValidationError(`Please enter at least ${minDays} days for your custom duration`);
           return false;
         }
-        if (days > 3650) {
-          setValidationError('Custom duration cannot exceed 3650 days (10 years)');
-          return false;
-        }
+      }
+
+      if (durationDays > totalChapters) {
+        setValidationError(`The selected duration (${durationDays} days) exceeds the total chapters (${totalChapters}). Please choose a shorter duration to ensure you read at least one chapter every day.`);
+        return false;
       }
     }
 
@@ -174,7 +189,7 @@ const PlanCreationWizard = () => {
           name: planData.selectedScope === 'entire' ? 'Entire Bible Reading Plan' : (planData.selectedScope === 'old-testament' ? 'Old Testament Plan' : (planData.selectedScope === 'new-testament' ? 'New Testament Plan' : 'Custom Reading Plan')),
           scope: planData.selectedScope === 'entire' ? 'Entire Bible' : (planData.selectedScope === 'old-testament' ? 'Old Testament' : (planData.selectedScope === 'new-testament' ? 'New Testament' : 'Custom')),
           selectedBooks: planData.selectedBooks,
-          readingStyle: planData.selectedStyle === 'canonical' ? 'Canonical' : (planData.selectedStyle === 'chronological' ? 'Chronological' : 'Historical'),
+          readingStyle: planData.selectedStyle === 'sequential' ? 'Sequential' : 'Balanced',
           translation: 'NIV',
           startDate: new Date().toISOString(),
           totalDays: durationDays,
@@ -235,6 +250,8 @@ const PlanCreationWizard = () => {
             onDurationChange={handleDurationChange}
             customDays={planData?.customDays}
             onCustomDaysChange={handleCustomDaysChange}
+            selectedScope={planData?.selectedScope}
+            selectedBooks={planData?.selectedBooks}
           />
         );
       case 3:

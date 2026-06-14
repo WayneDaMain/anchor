@@ -69,7 +69,7 @@ export default {
         }
         await sendPlanStartedEmail(email, name || "there", planName, env.RESEND_API_KEY);
         if (userId) {
-          await sendPushNotification(userId, "New reading plan started!", `You started ${planName}. Keep your streak alive!`, env);
+          await sendPushNotification(userId, "New reading plan started!", `You started ${planName}. Keep your daily reading habit active!`, env);
         }
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -255,23 +255,61 @@ async function handleNotifications(env) {
     const morningHour = parseInt(settings.morningHour?.integerValue || "7");
     const warningHour = parseInt(settings.warningHour?.integerValue || "21");
 
-    const activePlan = fields.activePlan?.mapValue?.fields;
+    let activePlan = fields.activePlan?.mapValue?.fields;
+    const activeGroupId = fields.activeGroupId?.stringValue;
+    let isGroupPlan = false;
+    let memberProgressFields = null;
+
+    if (!activePlan && activeGroupId) {
+      const groupUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${activeGroupId}`;
+      const groupRes = await fetch(groupUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (groupRes.ok) {
+        const groupDoc = await groupRes.json();
+        activePlan = groupDoc.fields?.plan?.mapValue?.fields;
+        isGroupPlan = true;
+
+        // Also fetch the member progress document
+        const memberUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${activeGroupId}/members/${userId}`;
+        const memberRes = await fetch(memberUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (memberRes.ok) {
+          const memberDoc = await memberRes.json();
+          memberProgressFields = memberDoc.fields;
+        }
+      }
+    }
+
+    const totalDays = activePlan ? parseInt(activePlan.totalDays?.integerValue || "0") : 0;
+    const chaptersCompleted = activePlan ? (isGroupPlan ? parseInt(memberProgressFields?.daysCompleted?.integerValue || "0") * 3 : parseInt(activePlan.progressStats?.mapValue?.fields?.chaptersCompleted?.integerValue || "0")) : 0;
+    const totalChapters = totalDays * 3;
+    const isPlanCompleted = totalChapters > 0 && chaptersCompleted >= totalChapters;
+    const hasActivePlan = activePlan && !isPlanCompleted;
 
     // Case A: Send Morning Reading List
     const lastMorningReminderSentDate = fields.lastMorningReminderSentDate?.stringValue;
-    if (morningReminders && localHour === morningHour && lastMorningReminderSentDate !== localDateStr) {
-      await sendMorningReading(email, userId, projectId, env.RESEND_API_KEY, token, env);
+    if (hasActivePlan && morningReminders && localHour === morningHour && lastMorningReminderSentDate !== localDateStr) {
+      const planName = activePlan.name?.stringValue || "Bible Reading Plan";
+      await sendMorningReading(email, userId, planName, env.RESEND_API_KEY, env);
       await markMorningReminderSent(userId, projectId, localDateStr, token);
     }
 
     // Case B: Send Evening Streak Warning
     const lastStreakWarningSentDate = fields.lastStreakWarningSentDate?.stringValue;
-    const completedDatesArray = activePlan?.progressStats?.mapValue?.fields?.completedDates?.arrayValue?.values || [];
+    const completedDatesArray = isGroupPlan
+      ? (memberProgressFields?.completedDates?.arrayValue?.values || [])
+      : (activePlan?.progressStats?.mapValue?.fields?.completedDates?.arrayValue?.values || []);
     const completedDates = completedDatesArray.map(v => v.stringValue).filter(Boolean);
     const readToday = completedDates.includes(localDateStr);
 
-    if (streakWarnings && localHour === warningHour && lastStreakWarningSentDate !== localDateStr && !readToday) {
-      await sendStreakWarning(email, userId, projectId, env.RESEND_API_KEY, token, env);
+    if (hasActivePlan && streakWarnings && localHour === warningHour && lastStreakWarningSentDate !== localDateStr && !readToday) {
+      await sendStreakWarning(email, userId, env.RESEND_API_KEY, env);
       await markStreakWarningSent(userId, projectId, localDateStr, token);
     }
 
@@ -292,19 +330,21 @@ async function handleNotifications(env) {
 
     // Case D: Weekly Progress Report (on Monday at local 9:00 AM)
     const lastWeeklyReportSent = fields.lastWeeklyReportSent?.stringValue;
-    if (localDay === "Mon" && localHour === 9 && lastWeeklyReportSent !== localDateStr) {
+    if (activePlan && localDay === "Mon" && localHour === 9 && lastWeeklyReportSent !== localDateStr) {
       const name = resolveUserName(fields);
 
-      let planName = "Bible Reading Plan";
+      let planName = activePlan.name?.stringValue || "Bible Reading Plan";
       let chaptersCompleted = 0;
       let currentStreak = 0;
-      let totalChapters = 150;
 
-      if (activePlan) {
-        planName = activePlan.name?.stringValue || planName;
-        const totalDays = parseInt(activePlan.totalDays?.integerValue || "50");
-        totalChapters = totalDays * 3;
-
+      if (isGroupPlan) {
+        const daysCompleted = parseInt(memberProgressFields?.daysCompleted?.integerValue || "0");
+        chaptersCompleted = daysCompleted * 3;
+        const completedDatesArray = memberProgressFields?.completedDates?.arrayValue?.values || [];
+        const yesterdayUtcDate = new Date(currentUtcDate.getTime() - 24 * 60 * 60 * 1000);
+        const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
+        currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
+      } else {
         const progressStats = activePlan.progressStats?.mapValue?.fields;
         if (progressStats) {
           chaptersCompleted = parseInt(progressStats.chaptersCompleted?.integerValue || "0");
@@ -326,8 +366,10 @@ async function handleNotifications(env) {
 
     // Case E: Re-engagement Email (sent at local 11:00 AM after 7 days of inactivity)
     const lastReengagementSentDate = fields.lastReengagementSentDate?.stringValue;
-    if (localHour === 11 && lastReengagementSentDate !== localDateStr) {
-      const completedDatesArray = activePlan?.progressStats?.mapValue?.fields?.completedDates?.arrayValue?.values || [];
+    if (activePlan && localHour === 11 && lastReengagementSentDate !== localDateStr) {
+      const completedDatesArray = isGroupPlan
+        ? (memberProgressFields?.completedDates?.arrayValue?.values || [])
+        : (activePlan?.progressStats?.mapValue?.fields?.completedDates?.arrayValue?.values || []);
 
       let lastActivityDate = null;
       if (completedDatesArray.length > 0) {
@@ -353,18 +395,22 @@ async function handleNotifications(env) {
     }
 
     // Case F: Celebratory Milestones (checked at local 12:00 PM)
-    if (localHour === 12) {
+    if (activePlan && localHour === 12) {
       const lastStreakMilestoneSent = parseInt(fields.lastStreakMilestoneSent?.integerValue || "0");
       const planCompletionEmailSent = fields.planCompletionEmailSent?.booleanValue === true;
 
-      if (activePlan) {
-        const totalDays = parseInt(activePlan.totalDays?.integerValue || "0");
-        const totalChapters = totalDays * 3;
+      let chaptersCompleted = 0;
+      let currentStreak = 0;
 
+      if (isGroupPlan) {
+        const daysCompleted = parseInt(memberProgressFields?.daysCompleted?.integerValue || "0");
+        chaptersCompleted = daysCompleted * 3;
+        const completedDatesArray = memberProgressFields?.completedDates?.arrayValue?.values || [];
+        const yesterdayUtcDate = new Date(currentUtcDate.getTime() - 24 * 60 * 60 * 1000);
+        const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
+        currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
+      } else {
         const progressStats = activePlan.progressStats?.mapValue?.fields;
-        let chaptersCompleted = 0;
-        let currentStreak = 0;
-
         if (progressStats) {
           chaptersCompleted = parseInt(progressStats.chaptersCompleted?.integerValue || "0");
 
@@ -373,25 +419,39 @@ async function handleNotifications(env) {
           const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
           currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
         }
-
-        // 1. Plan Completion Celebration
-        if (totalChapters > 0 && chaptersCompleted >= totalChapters && !planCompletionEmailSent) {
-          const name = resolveUserName(fields);
-          const planName = activePlan.name?.stringValue || "Bible Reading Plan";
-          await sendPlanCompletionEmail(email, name, planName, env.RESEND_API_KEY);
-          await sendPushNotification(userId, "Plan Completed! 🎓", `Congratulations! You have successfully completed "${planName}"!`, env);
-          await markPlanCompletionSent(userId, projectId, token);
-        }
-
-        // 2. Streak Milestones (7, 30, 100 days)
-        const milestones = [7, 30, 100];
-        if (milestones.includes(currentStreak) && lastStreakMilestoneSent !== currentStreak) {
-          const name = resolveUserName(fields);
-          await sendStreakMilestoneEmail(email, name, currentStreak, env.RESEND_API_KEY);
-          await sendPushNotification(userId, "New Streak Milestone! 🔥", `Incredible! You hit a ${currentStreak}-day reading streak!`, env);
-          await markStreakMilestoneSent(userId, projectId, currentStreak, token);
-        }
       }
+
+      // 1. Plan Completion Celebration
+      if (totalChapters > 0 && chaptersCompleted >= totalChapters && !planCompletionEmailSent) {
+        const name = resolveUserName(fields);
+        const planName = activePlan.name?.stringValue || "Bible Reading Plan";
+
+        // Generate PDF
+        const pdfBytes = await buildPdfBuffer(name, chaptersCompleted, currentStreak, totalChapters);
+        const base64Pdf = arrayBufferToBase64(pdfBytes);
+
+        await sendPlanCompletionEmail(email, name, planName, chaptersCompleted, currentStreak, totalChapters, base64Pdf, env.RESEND_API_KEY);
+        await sendPushNotification(userId, "Plan Completed!", `Congratulations! You have successfully completed "${planName}"!`, env);
+        await markPlanCompletionSent(userId, projectId, token);
+      }
+
+      // 2. Streak Milestones (7, 30, 100 days)
+      const milestones = [7, 30, 100];
+      if (milestones.includes(currentStreak) && lastStreakMilestoneSent !== currentStreak) {
+        const name = resolveUserName(fields);
+        await sendStreakMilestoneEmail(email, name, currentStreak, env.RESEND_API_KEY);
+        await sendPushNotification(userId, "Daily Reading Milestone", `Incredible! You have spent ${currentStreak} consecutive days in the Word.`, env);
+        await markStreakMilestoneSent(userId, projectId, currentStreak, token);
+      }
+    }
+
+    // Case G: Weekly Start Plan Reminder (on Sunday at local 10 AM, if they don't have an active plan)
+    const lastStartPlanReminderSentDate = fields.lastStartPlanReminderSentDate?.stringValue;
+    if (!activePlan && localDay === "Sun" && localHour === 10 && lastStartPlanReminderSentDate !== localDateStr) {
+      const name = resolveUserName(fields);
+      await sendStartPlanReminderEmail(email, name, env.RESEND_API_KEY);
+      await sendPushNotification(userId, "Start a reading plan", "Create a personalized reading plan today to help build a daily Bible reading habit.", env);
+      await markStartPlanReminderSent(userId, projectId, localDateStr, token);
     }
   }
 }
@@ -492,28 +552,15 @@ function resolveUserName(fields, fallbackName) {
 }
 
 // Query Firestore for the user's active reading progress to build email template
-async function sendMorningReading(email, userId, projectId, resendApiKey, authToken, env) {
-  // Query User Doc details
-  const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`;
-  const res = await fetch(userUrl, {
-    headers: {
-      'Authorization': `Bearer ${authToken}`
-    }
-  });
-  if (!res.ok) return;
-
-  const userDoc = await res.json();
-  const activePlan = userDoc.fields?.activePlan?.mapValue?.fields;
-  const planName = activePlan?.name?.stringValue || "Bible Reading Plan";
-
+async function sendMorningReading(email, userId, planName, resendApiKey, env) {
   const welcomeHtml = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
       <div style="text-align: center; margin-bottom: 25px;">
         <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
-        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Daily Reading Reminder 🍞</h2>
+        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Daily Reading Reminder</h2>
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Good morning! It's time for today's Bible reading assignment in your plan: <strong>${planName}</strong>.</p>
-      <p style="font-size: 15px; line-height: 1.6;">Spending time in the Word daily helps anchor your faith. Open your tracker to check off your chapters and build your streak!</p>
+      <p style="font-size: 15px; line-height: 1.6;">Spending time in the Word daily helps anchor your faith. Open your tracker to check off your chapters and build your daily reading habit!</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
         <a href="https://anchor.biblescriptura.com/daily-reading-dashboard" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Open Your Dashboard</a>
       </div>
@@ -524,36 +571,24 @@ async function sendMorningReading(email, userId, projectId, resendApiKey, authTo
 
   await sendEmail(
     email,
-    "Your Reading Bread for Today 🍞",
+    "Your Daily Reading for Today",
     welcomeHtml,
     resendApiKey
   );
 
-  await sendPushNotification(userId, "Your Daily Reading Assignment 🍞", `It's time for today's Bible reading in "${planName}".`, env);
+  await sendPushNotification(userId, "Your Daily Reading Assignment", `It's time for today's Bible reading in "${planName}".`, env);
 }
 
 // Warning sent if the user hasn't finished reading today
-async function sendStreakWarning(email, userId, projectId, resendApiKey, authToken, env) {
-  // Query User Doc details
-  const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`;
-  const res = await fetch(userUrl, {
-    headers: {
-      'Authorization': `Bearer ${authToken}`
-    }
-  });
-  if (!res.ok) return;
-
-  const userDoc = await res.json();
-  const activePlan = userDoc.fields?.activePlan?.mapValue?.fields;
-
+async function sendStreakWarning(email, userId, resendApiKey, env) {
   const warningHtml = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
       <div style="text-align: center; margin-bottom: 25px;">
         <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
-        <h2 style="color: #ef4444; margin-top: 10px; font-weight: 800; font-size: 22px;">Keep your streak alive! 🔥</h2>
+        <h2 style="color: #ef4444; margin-top: 10px; font-weight: 800; font-size: 22px;">Daily Reading Reminder</h2>
       </div>
-      <p style="font-size: 15px; line-height: 1.6;">You haven't checked off your Bible reading assignments for today yet.</p>
-      <p style="font-size: 15px; line-height: 1.6;">Don't let your habit slide! Log in before midnight to check off your chapters and protect your reading streak.</p>
+      <p style="font-size: 15px; line-height: 1.6;">This is a quick reminder to spend time in the Word today.</p>
+      <p style="font-size: 15px; line-height: 1.6;">Consistency is key to growing in your faith. Log in before midnight to check off today's chapters and keep your daily habit active.</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
         <a href="https://anchor.biblescriptura.com/daily-reading-dashboard" style="display: inline-block; padding: 12px 28px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.15);">Log Today's Reading</a>
       </div>
@@ -564,12 +599,12 @@ async function sendStreakWarning(email, userId, projectId, resendApiKey, authTok
 
   await sendEmail(
     email,
-    "Don't lose your streak! 🔥",
+    "Daily Bible Reading Reminder",
     warningHtml,
     resendApiKey
   );
 
-  await sendPushNotification(userId, "Keep your streak alive! 🔥", "You haven't logged today's reading yet. Protect your reading streak!", env);
+  await sendPushNotification(userId, "Daily Reading Reminder", "You haven't logged today's reading yet. Keep up your daily habit of spending time in the Word.", env);
 }
 
 async function sendPushNotification(userIds, title, message, env) {
@@ -619,7 +654,7 @@ async function sendPushNotification(userIds, title, message, env) {
 async function sendEmail(to, subject, htmlContent, resendApiKey, attachments = []) {
   const url = 'https://api.resend.com/emails';
   const body = {
-    from: 'Anchor <reminders@anchor.biblescriptura.com>',
+    from: 'Anchor <anchor@biblescriptura.com>',
     to: to,
     subject: subject,
     html: htmlContent
@@ -676,7 +711,7 @@ async function sendPlanStartedEmail(email, name, planName, resendApiKey) {
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
       <p style="font-size: 15px; line-height: 1.6;">You have started your new personal reading plan: <strong>${planName}</strong>.</p>
-      <p style="font-size: 15px; line-height: 1.6;">Building a daily habit of spending time in the Word anchors your faith and simplifies your spiritual progress. Log in daily to check off your chapters and keep your streak alive!</p>
+      <p style="font-size: 15px; line-height: 1.6;">Building a daily habit of spending time in the Word anchors your faith and simplifies your spiritual progress. Log in daily to check off your chapters and keep your daily reading habit active!</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
         <a href="https://anchor.biblescriptura.com/daily-reading-dashboard" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Open Your Dashboard</a>
       </div>
@@ -720,7 +755,7 @@ async function sendFeedbackEmail(email, name, resendApiKey) {
       <p style="font-size: 15px; line-height: 1.6;">You've been using Anchor for a few days now, and we hope it has helped you simplify and track your daily Bible reading progress.</p>
       <p style="font-size: 15px; line-height: 1.6;">We are constantly working to improve the platform, and we would love to hear your thoughts! What features do you love? Is there anything we could do better?</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
-        <a href="mailto:feedback@anchor.biblescriptura.com?subject=Anchor%20Feedback" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Share Your Feedback</a>
+        <a href="mailto:anchor@biblescriptura.com?subject=Anchor%20Feedback" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Share Your Feedback</a>
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Simply click the button above to email us, or reply directly to this email to share your thoughts.</p>
       <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 25px 0;" />
@@ -749,8 +784,8 @@ async function sendProgressReportEmail(email, name, planName, chaptersCompleted,
             <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #0f172a; text-align: right;">${chaptersCompleted} of ${totalChapters}</td>
           </tr>
           <tr>
-            <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Current Streak:</td>
-            <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #7c3aed; text-align: right;">${currentStreak} days 🔥</td>
+            <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Consecutive Days:</td>
+            <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #7c3aed; text-align: right;">${currentStreak} days</td>
           </tr>
         </table>
       </div>
@@ -794,8 +829,8 @@ async function sendWeeklyProgressReportEmail(email, name, planName, chaptersComp
             <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #0f172a; text-align: right;">${chaptersCompleted} of ${totalChapters}</td>
           </tr>
           <tr>
-            <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Current Streak:</td>
-            <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #7c3aed; text-align: right;">${currentStreak} days 🔥</td>
+            <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Consecutive Days:</td>
+            <td style="padding: 6px 0; font-size: 14px; font-weight: bold; color: #7c3aed; text-align: right;">${currentStreak} days</td>
           </tr>
         </table>
       </div>
@@ -843,16 +878,16 @@ async function sendReengagementEmail(email, name, resendApiKey) {
   await sendEmail(email, "We miss you on Anchor!", reengageHtml, resendApiKey);
 }
 
-async function sendPlanCompletionEmail(email, name, planName, resendApiKey) {
+async function sendPlanCompletionEmail(email, name, planName, chaptersCompleted, currentStreak, totalChapters, base64Pdf, resendApiKey) {
   const completeHtml = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
       <div style="text-align: center; margin-bottom: 25px;">
         <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
-        <h2 style="color: #10b981; margin-top: 10px; font-weight: 800; font-size: 22px;">Congratulations! Plan Completed! 🎓</h2>
+        <h2 style="color: #10b981; margin-top: 10px; font-weight: 800; font-size: 22px;">Congratulations! Plan Completed!</h2>
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
       <p style="font-size: 15px; line-height: 1.6;">You did it! You have successfully completed your reading plan: <strong>${planName}</strong>.</p>
-      <p style="font-size: 15px; line-height: 1.6;">Completing a Bible reading plan is a significant spiritual milestone and a testament to your discipline. We hope Anchor was a helpful guide along the way!</p>
+      <p style="font-size: 15px; line-height: 1.6;">Completing a Bible reading plan is a significant spiritual milestone and a testament to your daily discipline. We have attached a complete analytics report of your reading progress as a PDF to celebrate this milestone!</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
         <a href="https://anchor.biblescriptura.com/plan-creation-wizard" style="display: inline-block; padding: 12px 28px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Start a New Plan</a>
       </div>
@@ -862,7 +897,12 @@ async function sendPlanCompletionEmail(email, name, planName, resendApiKey) {
     </div>
   `;
 
-  await sendEmail(email, "Congratulations! You completed your reading plan! 🎓", completeHtml, resendApiKey);
+  await sendEmail(email, "Congratulations! You completed your reading plan!", completeHtml, resendApiKey, [
+    {
+      filename: name.replace(/\s+/g, '_') + '_Completion_Report.pdf',
+      content: base64Pdf
+    }
+  ]);
 }
 
 async function sendStreakMilestoneEmail(email, name, streakCount, resendApiKey) {
@@ -870,11 +910,11 @@ async function sendStreakMilestoneEmail(email, name, streakCount, resendApiKey) 
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
       <div style="text-align: center; margin-bottom: 25px;">
         <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
-        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Incredible! You hit a ${streakCount}-day streak! 🔥</h2>
+        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Celebrating Your Daily Bible Habit</h2>
       </div>
       <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
-      <p style="font-size: 15px; line-height: 1.6;">Consistency is key! You have officially hit a reading streak of <strong>${streakCount} days</strong> on Anchor.</p>
-      <p style="font-size: 15px; line-height: 1.6;">Keep up the daily habit of reading the Word. Keep that fire burning!</p>
+      <p style="font-size: 15px; line-height: 1.6;">Consistency is key to drawing closer to God. You have successfully read your Bible for <strong>${streakCount} consecutive days</strong>!</p>
+      <p style="font-size: 15px; line-height: 1.6;">We hope this daily habit continues to bring you encouragement and growth. Keep spending time in the scriptures every day.</p>
       <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
         <a href="https://anchor.biblescriptura.com/daily-reading-dashboard" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Log Today's Reading</a>
       </div>
@@ -883,7 +923,37 @@ async function sendStreakMilestoneEmail(email, name, streakCount, resendApiKey) 
     </div>
   `;
 
-  await sendEmail(email, `Incredible! You hit a ${streakCount}-day reading streak! 🔥`, milestoneHtml, resendApiKey);
+  await sendEmail(email, `Daily Reading Milestone: ${streakCount} Days`, milestoneHtml, resendApiKey);
+}
+
+async function sendStartPlanReminderEmail(email, name, resendApiKey) {
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
+      <div style="text-align: center; margin-bottom: 25px;">
+        <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
+        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Begin a Reading Plan</h2>
+      </div>
+      <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
+      <p style="font-size: 15px; line-height: 1.6;">Consistency in the Word starts with a plan. We noticed you don't have an active Bible reading plan set up right now.</p>
+      <p style="font-size: 15px; line-height: 1.6;">Take a moment to create a personalized reading plan today to help you build a daily habit of spending time in the scriptures.</p>
+      <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+        <a href="https://anchor.biblescriptura.com/plan-creation-wizard" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Create a Reading Plan</a>
+      </div>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 25px 0;" />
+      <p style="color: #78716c; font-size: 11px; text-align: center; line-height: 1.4; margin: 0;">Sent by Anchor, a product of <a href="https://biblescriptura.com" style="color: #7c3aed; text-decoration: underline; font-weight: 600;">Scriptura</a>. Bible progress, simplified.</p>
+    </div>
+  `;
+  await sendEmail(email, "Start your Bible reading plan", html, resendApiKey);
+}
+
+async function markStartPlanReminderSent(userId, projectId, dateStr, authToken) {
+  await updateUserField(
+    userId,
+    projectId,
+    { lastStartPlanReminderSentDate: { stringValue: dateStr } },
+    ["lastStartPlanReminderSentDate"],
+    authToken
+  );
 }
 async function fetchImageBytes(url) {
   const res = await fetch(url);
@@ -1058,7 +1128,7 @@ async function buildPdfBuffer(name, completedCount, streakDays, totalChapters) {
     cardH,
     rgb(0.98, 0.96, 0.99),
     rgb(0.9, 0.85, 0.96),
-    'CURRENT STREAK',
+    'CONSECUTIVE DAYS',
     `${streakDays} days`,
     rgb(0.48, 0.22, 0.93)
   );

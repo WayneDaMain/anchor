@@ -53,10 +53,26 @@ const DeepLinkHandler = () => {
       handleDeepLink(data.url);
     });
 
+    // Listen for hardware back button (Capacitor native app)
+    const backButtonListener = CapApp.addListener("backButton", () => {
+      const currentPath = window.location.pathname;
+      if (
+        currentPath === "/" ||
+        currentPath === "/daily-reading-dashboard" ||
+        currentPath === "/login" ||
+        currentPath === "/onboarding"
+      ) {
+        CapApp.exitApp();
+      } else {
+        navigate(-1);
+      }
+    });
+
     getInitialUrl();
 
     return () => {
       listener.remove();
+      backButtonListener.remove();
     };
   }, [navigate]);
 

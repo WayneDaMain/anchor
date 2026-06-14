@@ -147,14 +147,20 @@ const DailyReadingDashboard = () => {
 
   const progressStats = planContext === 'personal' 
     ? {
-        ...(planData?.progressStats || { daysCompleted: 0, chaptersCompleted: 0, booksCompleted: 0, completedDates: [] }),
-        currentStreak: calculatedStreak
+        daysCompleted: 0,
+        chaptersCompleted: 0,
+        booksCompleted: 0,
+        completedDates: [],
+        ...(planData?.progressStats || {}),
+        currentStreak: calculatedStreak,
+        longestStreak: Math.max(planData?.progressStats?.longestStreak || 0, calculatedStreak)
       }
     : {
         daysCompleted: memberProgress?.daysCompleted || 0,
         chaptersCompleted: (memberProgress?.daysCompleted || 0) * 3,
         booksCompleted: 0,
         currentStreak: calculatedStreak,
+        longestStreak: Math.max(memberProgress?.longestStreak || 0, calculatedStreak),
         completedDates: completedDates
       };
 
@@ -278,6 +284,9 @@ const DailyReadingDashboard = () => {
           }
         });
 
+        const nextStreak = calculateStreak(updatedDates, todayDateStr, yesterdayDateStr);
+        const nextLongestStreak = Math.max(planData?.progressStats?.longestStreak || 0, nextStreak);
+
         const updatedPlan = {
           ...planData,
           completedChapters: [],
@@ -287,18 +296,24 @@ const DailyReadingDashboard = () => {
             chaptersCompleted: nextChaptersCompleted,
             booksCompleted: nextBooksCompleted,
             completedDates: updatedDates,
-            currentStreak: calculateStreak(updatedDates, todayDateStr, yesterdayDateStr)
+            currentStreak: nextStreak,
+            longestStreak: nextLongestStreak
           }
         };
 
         await updateActivePlan(updatedPlan);
       } else {
+        const nextStreak = calculateStreak(updatedDates, todayDateStr, yesterdayDateStr);
+        const nextLongestStreak = Math.max(memberProgress?.longestStreak || 0, nextStreak);
+
         // Log progress in group members collection
         const memberRef = doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid);
         await setDoc(memberRef, {
           daysCompleted: nextDaysCompleted,
           completedDates: updatedDates,
-          completedChapters: []
+          completedChapters: [],
+          currentStreak: nextStreak,
+          longestStreak: nextLongestStreak
         }, { merge: true });
 
         // Increment group collective progress completedChapters

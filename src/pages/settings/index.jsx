@@ -292,7 +292,7 @@ const Settings = () => {
                 {/* Morning Reminder Toggle */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <span className="text-sm font-semibold text-foreground block">Morning Daily Bread Alert</span>
+                    <span className="text-sm font-semibold text-foreground block">Morning Daily Reading Alert</span>
                     <span className="text-xs text-muted-foreground">Receive your assigned Bible chapters directly in your inbox to start the day.</span>
                     {morningReminders && (
                       <div className="mt-2.5 flex items-center gap-2 flex-wrap">
@@ -398,8 +398,8 @@ const Settings = () => {
                 {/* Evening Streak Reminder Toggle */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <span className="text-sm font-semibold text-foreground block">Evening Streak Warning</span>
-                    <span className="text-xs text-muted-foreground">Get alerted if you are at risk of breaking your reading streak.</span>
+                    <span className="text-sm font-semibold text-foreground block">Evening Reading Reminder</span>
+                    <span className="text-xs text-muted-foreground">Get reminded in the evening if you haven't logged today's reading.</span>
                     {streakWarnings && (
                       <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground flex items-center gap-1.5">

@@ -75,7 +75,7 @@ const ProgressReports = () => {
     totalChapters: planData?.totalDays ? planData.totalDays * 3 : 150,
     chaptersRead: progressStats?.chaptersCompleted || 0,
     currentStreak: progressStats?.currentStreak || 0,
-    longestStreak: progressStats?.currentStreak || 0
+    longestStreak: Math.max(progressStats?.longestStreak || 0, progressStats?.currentStreak || 0)
   };
 
   const statistics = {
@@ -152,17 +152,7 @@ const ProgressReports = () => {
 
             {/* Stats Grids shown at bottom */}
             <FadeIn delay={0.3}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                {/* Streaks */}
-                <div className="space-y-2.5">
-                  <h3 className="text-sm font-bold text-foreground ml-1">Streaks</h3>
-                  <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm transition-all duration-200 hover:shadow-md">
-                    <div className="text-3xl font-extrabold text-foreground tracking-tight mb-1">0</div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Current Day Streak</p>
-                    <p className="text-xs text-muted-foreground mt-3 pt-2 border-t border-border/50">Longest streak: 0 days</p>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                 {/* Chapters Read */}
                 <div className="space-y-2.5">
                   <h3 className="text-sm font-bold text-foreground ml-1">Chapters Read</h3>

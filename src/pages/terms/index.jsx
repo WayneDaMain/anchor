@@ -104,7 +104,7 @@ const Terms = () => {
               <h2 className="text-xl font-heading font-semibold text-foreground mb-3">10. Contact</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 If you have questions about these Terms, please contact us at{' '}
-                <a href="mailto:anchor@biblescriptura.com" className="text-accent hover:underline">support@biblescriptura.com</a>.
+                <a href="mailto:anchor@biblescriptura.com" className="text-accent hover:underline">anchor@biblescriptura.com</a>.
               </p>
             </section>
           </div>

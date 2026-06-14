@@ -13,6 +13,7 @@ import { Checkbox } from '../../components/ui/Checkbox';
 import ScopeSelection from '../plan-creation-wizard/components/ScopeSelection';
 import DurationSelection from '../plan-creation-wizard/components/DurationSelection';
 import StyleSelection from '../plan-creation-wizard/components/StyleSelection';
+import { BIBLE_BOOKS_DATA } from '../../utils/planHelpers';
 
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -164,12 +165,30 @@ const GroupCreationWizard = () => {
         setValidationError('Please select a duration to continue');
         return false;
       }
+
+      const totalChapters = BIBLE_BOOKS_DATA.filter(b => groupData?.selectedBooks?.includes(b.name)).reduce((acc, curr) => acc + curr.chapters, 0) || (groupData?.selectedScope === 'entire' ? 1189 : groupData?.selectedScope === 'old-testament' ? 929 : groupData?.selectedScope === 'new-testament' ? 260 : 0);
+
+      const durationDays = groupData.selectedDuration === 'custom'
+        ? parseInt(groupData.customDays)
+        : {
+            '3-months': 90,
+            '6-months': 180,
+            '1-year': 365,
+            '2-years': 730
+          }[groupData.selectedDuration] || 365;
+
       if (groupData?.selectedDuration === 'custom') {
         const days = parseInt(groupData?.customDays);
-        if (!days || days < 30) {
-          setValidationError('Please enter at least 30 days for custom duration');
+        const minDays = (groupData?.selectedScope === 'custom' && totalChapters < 30) ? 1 : 30;
+        if (!days || days < minDays) {
+          setValidationError(`Please enter at least ${minDays} days for custom duration`);
           return false;
         }
+      }
+
+      if (durationDays > totalChapters) {
+        setValidationError(`The selected duration (${durationDays} days) exceeds the total chapters (${totalChapters}). Please choose a shorter duration to ensure the group reads at least one chapter every day.`);
+        return false;
       }
     }
 
@@ -253,7 +272,7 @@ const GroupCreationWizard = () => {
             name: planName,
             scope: groupData.selectedScope === 'entire' ? 'Entire Bible' : (groupData.selectedScope === 'old-testament' ? 'Old Testament' : (groupData.selectedScope === 'new-testament' ? 'New Testament' : 'Custom')),
             selectedBooks: groupData.selectedBooks,
-            readingStyle: groupData.selectedStyle === 'canonical' ? 'Canonical' : (groupData.selectedStyle === 'chronological' ? 'Chronological' : 'Historical'),
+            readingStyle: groupData.selectedStyle === 'sequential' ? 'Sequential' : 'Balanced',
             startDate: new Date().toISOString(),
             totalDays: durationDays
           }
@@ -329,9 +348,8 @@ const GroupCreationWizard = () => {
 
   const getStyleLabel = () => {
     const labels = {
-      'canonical': 'Canonical Style',
-      'chronological': 'Chronological Style',
-      'historical': 'Historical Style'
+      'sequential': 'Sequential Reading',
+      'balanced': 'Balanced Reading'
     };
     return labels?.[groupData?.selectedStyle] || 'Not selected';
   };
@@ -432,6 +450,8 @@ const GroupCreationWizard = () => {
             onDurationChange={(dur) => handleFieldChange('selectedDuration', dur)}
             customDays={groupData?.customDays}
             onCustomDaysChange={(days) => handleFieldChange('customDays', days)}
+            selectedScope={groupData?.selectedScope}
+            selectedBooks={groupData?.selectedBooks}
           />
         );
       case 4:

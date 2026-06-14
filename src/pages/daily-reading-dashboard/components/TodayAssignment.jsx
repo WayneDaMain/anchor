@@ -150,6 +150,17 @@ const TodayAssignment = ({
           )}
         </>
       )}
+
+      {/* Scriptura Notes Tip */}
+      <div className="mt-4 p-3.5 bg-accent/5 rounded-xl border border-accent/10 flex items-start gap-3">
+        <Icon name="Lightbulb" size={18} className="text-accent flex-shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-xs font-bold text-foreground">Tip: Reflect on today's passage</h4>
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+            Take notes and journal your insights on <a href="https://biblescriptura.com" target="_blank" rel="noopener noreferrer" className="text-accent font-semibold hover:underline inline-flex items-center gap-0.5">Scriptura<Icon name="ExternalLink" size={8} /></a> as you read.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

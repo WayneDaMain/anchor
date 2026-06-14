@@ -1,8 +1,10 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
+import { BIBLE_BOOKS_DATA } from '../../../utils/planHelpers';
 
-const DurationSelection = ({ selectedDuration, onDurationChange, customDays, onCustomDaysChange }) => {
+const DurationSelection = ({ selectedDuration, onDurationChange, customDays, onCustomDaysChange, selectedScope, selectedBooks }) => {
+  const totalChapters = BIBLE_BOOKS_DATA.filter(b => selectedBooks?.includes(b.name)).reduce((acc, curr) => acc + curr.chapters, 0) || (selectedScope === 'entire' ? 1189 : selectedScope === 'old-testament' ? 929 : selectedScope === 'new-testament' ? 260 : 1189);
   const durationOptions = [
     {
       id: '3-months',
@@ -99,11 +101,11 @@ const DurationSelection = ({ selectedDuration, onDurationChange, customDays, onC
               label="Number of Days"
               type="number"
               placeholder="Enter number of days"
-              description="Minimum 30 days recommended for meaningful progress"
+              description={`Enter a duration between ${selectedScope === 'custom' && totalChapters < 30 ? '1' : '30'} and ${totalChapters} days (at least 1 chapter per day)`}
               value={customDays}
               onChange={(e) => onCustomDaysChange(e?.target?.value)}
-              min="30"
-              max="3650"
+              min={selectedScope === 'custom' && totalChapters < 30 ? "1" : "30"}
+              max={totalChapters}
               required
             />
           </div>

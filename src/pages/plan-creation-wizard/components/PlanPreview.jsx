@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { BIBLE_BOOKS_DATA } from '../../../utils/planHelpers';
 
 const PlanPreview = ({ planData }) => {
   const calculateEstimates = () => {
@@ -7,7 +8,7 @@ const PlanPreview = ({ planData }) => {
       'entire': 1189,
       'old-testament': 929,
       'new-testament': 260,
-      'custom': planData?.selectedBooks?.length * 20 || 0
+      'custom': BIBLE_BOOKS_DATA.filter(b => planData?.selectedBooks?.includes(b.name)).reduce((acc, curr) => acc + curr.chapters, 0)
     };
 
     const totalChapters = scopeChapters?.[planData?.selectedScope] || 0;
@@ -167,7 +168,7 @@ const PlanPreview = ({ planData }) => {
               <strong>What happens next?</strong>
             </p>
             <p className="text-sm md:text-base text-muted-foreground">
-              Your personalized reading plan will be generated with daily chapter assignments. You can start immediately and track your progress as you complete each day's reading. Remember, you can always pause and resume anytime.
+              Your personalized reading plan will be generated with daily chapter assignments. You can start immediately and track your progress as you complete each day's reading.
             </p>
           </div>
         </div>
