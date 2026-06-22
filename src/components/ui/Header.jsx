@@ -37,7 +37,7 @@ const Header = () => {
     try {
       await logout();
       navigate('/login');
-    } catch {}
+    } catch { }
   };
 
   const handleNavClick = () => {
@@ -61,13 +61,13 @@ const Header = () => {
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center">
               <Link to="/daily-reading-dashboard" className="flex items-center space-x-2.5">
-                <img src="/anchor.png" alt="Anchor" className="h-8 w-8 object-contain" />
+                <img src="/app_icon.png" alt="Anchor" className="h-8 w-8 object-contain" />
                 <span className="text-lg font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
               </Link>
             </div>
 
             <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems?.map((item) => 
+              {navigationItems?.map((item) =>
                 item.isExternal ? (
                   item.onAction ? (
                     <button
@@ -79,26 +79,25 @@ const Header = () => {
                       <Icon name="ExternalLink" size={12} className="opacity-60" />
                     </button>
                   ) : (
-                  <a
-                    key={item?.path}
-                    href={item?.path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-250 text-muted-foreground hover:text-foreground hover:bg-muted/40 flex items-center gap-1"
-                  >
-                    <span>{item?.label}</span>
-                    <Icon name="ExternalLink" size={12} className="opacity-60" />
-                  </a>
+                    <a
+                      key={item?.path}
+                      href={item?.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-250 text-muted-foreground hover:text-foreground hover:bg-muted/40 flex items-center gap-1"
+                    >
+                      <span>{item?.label}</span>
+                      <Icon name="ExternalLink" size={12} className="opacity-60" />
+                    </a>
                   )
                 ) : (
                   <Link
                     key={item?.path}
                     to={item?.path}
-                    className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-250 ${
-                      isActivePath(item?.path)
+                    className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-250 ${isActivePath(item?.path)
                         ? 'bg-[#1c142c] text-white dark:bg-[#7c3aed] dark:text-white shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                    }`}
+                      }`}
                   >
                     {item?.label}
                   </Link>
@@ -184,7 +183,7 @@ const Header = () => {
             />
             <div className="fixed top-20 left-4 right-4 bg-card border border-border/80 z-dropdown rounded-2xl shadow-xl overflow-hidden p-4 md:hidden">
               <nav className="space-y-1">
-                {navigationItems?.map((item) => 
+                {navigationItems?.map((item) =>
                   item.isExternal ? (
                     item.onAction ? (
                       <button
@@ -196,28 +195,27 @@ const Header = () => {
                         <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
                       </button>
                     ) : (
-                    <a
-                      key={item?.path}
-                      href={item?.path}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={handleNavClick}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl transition-gentle text-sm font-semibold text-foreground hover:bg-muted"
-                    >
-                      <span>{item?.label}</span>
-                      <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
-                    </a>
+                      <a
+                        key={item?.path}
+                        href={item?.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={handleNavClick}
+                        className="flex items-center justify-between px-4 py-3 rounded-xl transition-gentle text-sm font-semibold text-foreground hover:bg-muted"
+                      >
+                        <span>{item?.label}</span>
+                        <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
+                      </a>
                     )
                   ) : (
                     <Link
                       key={item?.path}
                       to={item?.path}
                       onClick={handleNavClick}
-                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-gentle text-sm font-semibold ${
-                        isActivePath(item?.path)
+                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-gentle text-sm font-semibold ${isActivePath(item?.path)
                           ? 'bg-[#1c142c] text-white dark:bg-[#7c3aed]'
                           : 'text-foreground hover:bg-muted'
-                      }`}
+                        }`}
                     >
                       <span>{item?.label}</span>
                     </Link>

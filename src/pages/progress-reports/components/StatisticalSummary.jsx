@@ -27,7 +27,7 @@ const StatisticalSummary = ({ statistics }) => {
     {
       label: 'Next Milestone',
       value: upcomingMilestone?.name,
-      description: `${upcomingMilestone?.remaining} chapters away`
+      description: upcomingMilestone?.unit ? `${upcomingMilestone?.remaining} ${upcomingMilestone?.unit} away` : 'Unlocked'
     }
   ];
 

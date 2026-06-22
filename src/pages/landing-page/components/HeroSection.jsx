@@ -45,7 +45,7 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex flex-col justify-between overflow-hidden bg-white dark:bg-zinc-950 transition-colors duration-300">
-      
+
       {/* Exquisite Subtle Spotlight Grid Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-white to-white dark:from-zinc-900/40 dark:via-zinc-950 dark:to-zinc-950" />
@@ -56,14 +56,14 @@ const HeroSection = () => {
 
       {/* Minimalist Top Header */}
       <header className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 h-[88px] flex items-center justify-between">
-        <div 
+        <div
           onClick={() => navigate('/')}
           className="flex items-center gap-1.5 sm:gap-2 cursor-pointer flex-shrink-0"
         >
           <Icon name="Anchor" size={24} className="w-6 h-6 object-contain text-slate-900 dark:text-zinc-100" />
           <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-zinc-100 tracking-tight font-sans">Anchor</span>
         </div>
-        
+
         <nav className="hidden md:flex items-center gap-8">
           <button
             onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
@@ -122,7 +122,7 @@ const HeroSection = () => {
       {/* Main Grid Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-8 flex-grow flex items-center py-12 md:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center w-full">
-          
+
           {/* Left Column: Typography & CTAs */}
           <div className="lg:col-span-7 space-y-8 text-left max-w-2xl">
 
@@ -137,7 +137,7 @@ const HeroSection = () => {
 
             <FadeIn delay={0.25} direction="up">
               <p className="text-base sm:text-lg text-slate-500 dark:text-zinc-400 font-light leading-relaxed max-w-xl">
-                Most people start a Bible reading plan and quietly drop it. Anchor makes reading progress dead simple to track, so you can build a consistent habit with zero friction.
+                Most people start a Bible reading plan and quietly drop it. Anchor makes it simple to track, so you can build a consistent habit with zero friction.
               </p>
             </FadeIn>
 
@@ -150,7 +150,7 @@ const HeroSection = () => {
                   <span>Start tracking for free</span>
                   <Icon name="ArrowRight" size={16} className="text-white/80 dark:text-zinc-950/80 group-hover:translate-x-0.5 transition-all duration-200" />
                 </button>
-                
+
                 <button
                   onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                   className="text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200 font-semibold text-sm px-4 py-3.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 group cursor-pointer"
@@ -200,15 +200,15 @@ const HeroSection = () => {
                       <span className="text-[10px] text-slate-400 dark:text-zinc-500 block font-normal leading-tight">Bible Chronological</span>
                     </div>
                   </div>
-                  
+
                   <motion.div
                     key={streakCount}
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15 }}
                     className={`border px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${isChecked
-                        ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-455'
-                        : 'bg-slate-50 border-slate-100 dark:bg-zinc-800/40 dark:border-zinc-800 text-slate-500 dark:text-zinc-400'
+                      ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-455'
+                      : 'bg-slate-50 border-slate-100 dark:bg-zinc-800/40 dark:border-zinc-800 text-slate-500 dark:text-zinc-400'
                       }`}
                   >
                     <Icon name="Zap" size={10} className={isChecked ? 'text-emerald-500 fill-emerald-500' : 'text-slate-400'} />
@@ -260,7 +260,7 @@ const HeroSection = () => {
                     <span>PROGRESS</span>
                     <span>{isChecked ? '3 of 3 tasks' : '2 of 3 tasks'}</span>
                   </div>
-                  
+
                   {/* Small progress meter bar */}
                   <div className="w-full h-1 bg-slate-200 dark:bg-zinc-750 rounded-full mt-1.5 overflow-hidden">
                     <motion.div
@@ -312,8 +312,8 @@ const HeroSection = () => {
                         animate={{ scale: isChecked ? 1.05 : 1 }}
                         transition={{ type: "spring", stiffness: 400, damping: 10 }}
                         className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 ${isChecked
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-slate-300 dark:border-zinc-700 group-hover:border-slate-800 dark:group-hover:border-zinc-500 bg-white dark:bg-zinc-900'
+                          ? 'bg-emerald-500 border-emerald-500 text-white'
+                          : 'border-slate-300 dark:border-zinc-700 group-hover:border-slate-800 dark:group-hover:border-zinc-500 bg-white dark:bg-zinc-900'
                           }`}
                       >
                         {isChecked ? (
@@ -323,12 +323,12 @@ const HeroSection = () => {
                         )}
                       </motion.div>
                     </div>
-                    
+
                     <span className={`text-sm font-semibold transition-all duration-200 ${isChecked ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-zinc-100'
                       }`}>
                       Luke 6
                     </span>
-                    
+
                     {isChecked && (
                       <motion.span
                         initial={{ opacity: 0, x: -5 }}

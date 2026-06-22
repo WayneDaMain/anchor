@@ -8,7 +8,7 @@ import AppFooter from '../../components/ui/AppFooter';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { calculateStreak } from '../../utils/planHelpers';
+import { calculateStreak, getUpcomingMilestone } from '../../utils/planHelpers';
 import ProgressOverview from './components/ProgressOverview';
 import StatisticalSummary from './components/StatisticalSummary';
 import ParticipationCalendar from './components/ParticipationCalendar';
@@ -78,13 +78,22 @@ const ProgressReports = () => {
     longestStreak: Math.max(progressStats?.longestStreak || 0, progressStats?.currentStreak || 0)
   };
 
+  const upcoming = getUpcomingMilestone(
+    progressData.chaptersRead,
+    progressData.currentStreak,
+    progressStats.booksCompleted || 0,
+    currentUser?.activeGroupId,
+    progressData.completionPercentage
+  );
+
   const statistics = {
     averageDailyProgress: 3,
     projectedCompletion: planData ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(new Date(planData.startDate).getTime() + planData.totalDays * 24 * 60 * 60 * 1000)) : '',
     totalReadingDays: progressStats?.daysCompleted || 0,
     upcomingMilestone: {
-      name: 'Read first chapter!',
-      remaining: 1
+      name: upcoming.name,
+      remaining: upcoming.remaining,
+      unit: upcoming.unit
     }
   };
 

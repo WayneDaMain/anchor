@@ -169,3 +169,80 @@ export const calculateStreak = (completedDates, todayStr, yesterdayStr) => {
   }
   return streak;
 };
+
+export const MILESTONES = [
+  { id: 'first_plan', name: 'Architect', description: 'Created your first reading plan', type: 'plan', value: 1 },
+  { id: 'first_chapter', name: 'First Steps', description: 'Read your first chapter', type: 'chapters', value: 1 },
+  { id: 'first_group', name: 'Social Reader', description: 'Joined your first reading group', type: 'group', value: 1 },
+  { id: 'streak_3', name: 'Steadfast Start', description: 'Maintain a 3-day reading streak', type: 'streak', value: 3 },
+  { id: 'streak_7', name: 'Faithful Habit', description: 'Maintain a 7-day reading streak', type: 'streak', value: 7 },
+  { id: 'book_1', name: 'Book Finisher', description: 'Completed your first full book of the Bible', type: 'books', value: 1 },
+  { id: 'book_5', name: 'Pentateuch Pilgrim', description: 'Completed reading 5 books of the Bible', type: 'books', value: 5 },
+  { id: 'chapters_50', name: 'Devoted Reader', description: 'Read 50 chapters of the Word', type: 'chapters', value: 50 },
+  { id: 'streak_30', name: 'Enduring Light', description: 'Maintain a 30-day reading streak', type: 'streak', value: 30 },
+  { id: 'chapters_100', name: 'Keeper of Wisdom', description: 'Read 100 chapters of the Word', type: 'chapters', value: 100 },
+  { id: 'book_33', name: 'Halfway Mark', description: 'Completed reading 33 books of the Bible', type: 'books', value: 33 },
+  { id: 'streak_100', name: 'On Fire', description: 'Maintain a 100-day reading streak', type: 'streak', value: 100 },
+  { id: 'book_all', name: 'The Living Word', description: 'Completed reading all 66 books of the Bible', type: 'books', value: 66 },
+  { id: 'plan_complete', name: 'Steadfast Heart', description: 'Complete your reading plan', type: 'complete', value: 100 }
+];
+
+export const getUpcomingMilestone = (chaptersRead, currentStreak, booksCompleted, activeGroupId, completionPercentage) => {
+  const hasPlan = chaptersRead > 0 || currentStreak > 0 || booksCompleted > 0 || completionPercentage > 0;
+  
+  for (const m of MILESTONES) {
+    if (m.id === 'first_plan' && !hasPlan) {
+      return { name: m.description, remaining: 1, unit: 'plan' };
+    }
+    if (m.id === 'first_group' && !activeGroupId) {
+      return { name: m.description, remaining: 1, unit: 'group' };
+    }
+    if (m.type === 'chapters' && chaptersRead < m.value) {
+      return { name: m.description, remaining: m.value - chaptersRead, unit: 'chapters' };
+    }
+    if (m.type === 'streak' && currentStreak < m.value) {
+      return { name: m.description, remaining: m.value - currentStreak, unit: 'days' };
+    }
+    if (m.type === 'books' && booksCompleted < m.value) {
+      return { name: m.description, remaining: m.value - booksCompleted, unit: 'books' };
+    }
+    if (m.type === 'complete' && completionPercentage < m.value) {
+      return { name: m.description, remaining: m.value - completionPercentage, unit: '%' };
+    }
+  }
+  return { name: 'All Milestones Achieved!', remaining: 0, unit: '' };
+};
+
+export const getLatestAchievedMilestone = (chaptersRead, currentStreak, booksCompleted, activeGroupId, completionPercentage, planStartDate) => {
+  let latest = null;
+
+  for (const m of MILESTONES) {
+    let achieved = false;
+    if (m.id === 'first_plan') {
+      achieved = true;
+    } else if (m.id === 'first_group' && activeGroupId) {
+      achieved = true;
+    } else if (m.type === 'chapters' && chaptersRead >= m.value) {
+      achieved = true;
+    } else if (m.type === 'streak' && currentStreak >= m.value) {
+      achieved = true;
+    } else if (m.type === 'books' && booksCompleted >= m.value) {
+      achieved = true;
+    } else if (m.type === 'complete' && completionPercentage >= m.value) {
+      achieved = true;
+    }
+
+    if (achieved) {
+      latest = m;
+    }
+  }
+
+  if (latest) {
+    return {
+      title: latest.name,
+      description: latest.description,
+      date: planStartDate ? new Date(planStartDate) : new Date()
+    };
+  }
+  return null;
+};

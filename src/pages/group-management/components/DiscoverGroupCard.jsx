@@ -57,9 +57,9 @@ const DiscoverGroupCard = ({ group, onJoinGroup, isJoined }) => {
         ) : (
           <div className="w-full h-full relative overflow-hidden flex items-center justify-center bg-zinc-50 dark:bg-zinc-900/40">
             {/* Crisp, Beautifully Faded Large Anchor Logo */}
-            <img 
-              src="/anchor.png" 
-              alt="" 
+            <img
+              src="/app_icon.png"
+              alt=""
               className="w-20 h-20 object-contain opacity-25 dark:opacity-15 transition-transform duration-500 group-hover:scale-105"
             />
           </div>

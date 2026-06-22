@@ -197,6 +197,39 @@ export default {
         });
       }
 
+      if (url.pathname === '/check-milestones' && request.method === 'POST') {
+        const { email, userId } = await request.json();
+        if (!userId) {
+          return new Response("userId is required", { status: 400, headers: corsHeaders });
+        }
+
+        const token = await getGoogleAuthToken(env.FIREBASE_CLIENT_EMAIL, env.FIREBASE_PRIVATE_KEY);
+        const projectId = env.FIREBASE_PROJECT_ID;
+        const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`;
+        const res = await fetch(userUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!res.ok) {
+          return new Response("User not found in Firestore", { status: 404, headers: corsHeaders });
+        }
+        const userDoc = await res.json();
+        const fields = userDoc.fields || {};
+
+        const resolvedEmail = email || fields.email?.stringValue;
+        if (!resolvedEmail) {
+          return new Response("Email is required", { status: 400, headers: corsHeaders });
+        }
+
+        await checkUserMilestones(fields, userId, resolvedEmail, token, env);
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       // Default fallback runs cron checks
       await handleNotifications(env);
       return new Response("Notifications check executed successfully.", { status: 200, headers: corsHeaders });
@@ -395,54 +428,8 @@ async function handleNotifications(env) {
     }
 
     // Case F: Celebratory Milestones (checked at local 12:00 PM)
-    if (activePlan && localHour === 12) {
-      const lastStreakMilestoneSent = parseInt(fields.lastStreakMilestoneSent?.integerValue || "0");
-      const planCompletionEmailSent = fields.planCompletionEmailSent?.booleanValue === true;
-
-      let chaptersCompleted = 0;
-      let currentStreak = 0;
-
-      if (isGroupPlan) {
-        const daysCompleted = parseInt(memberProgressFields?.daysCompleted?.integerValue || "0");
-        chaptersCompleted = daysCompleted * 3;
-        const completedDatesArray = memberProgressFields?.completedDates?.arrayValue?.values || [];
-        const yesterdayUtcDate = new Date(currentUtcDate.getTime() - 24 * 60 * 60 * 1000);
-        const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
-        currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
-      } else {
-        const progressStats = activePlan.progressStats?.mapValue?.fields;
-        if (progressStats) {
-          chaptersCompleted = parseInt(progressStats.chaptersCompleted?.integerValue || "0");
-
-          const completedDatesArray = progressStats.completedDates?.arrayValue?.values || [];
-          const yesterdayUtcDate = new Date(currentUtcDate.getTime() - 24 * 60 * 60 * 1000);
-          const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
-          currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
-        }
-      }
-
-      // 1. Plan Completion Celebration
-      if (totalChapters > 0 && chaptersCompleted >= totalChapters && !planCompletionEmailSent) {
-        const name = resolveUserName(fields);
-        const planName = activePlan.name?.stringValue || "Bible Reading Plan";
-
-        // Generate PDF
-        const pdfBytes = await buildPdfBuffer(name, chaptersCompleted, currentStreak, totalChapters);
-        const base64Pdf = arrayBufferToBase64(pdfBytes);
-
-        await sendPlanCompletionEmail(email, name, planName, chaptersCompleted, currentStreak, totalChapters, base64Pdf, env.RESEND_API_KEY);
-        await sendPushNotification(userId, "Plan Completed!", `Congratulations! You have successfully completed "${planName}"!`, env);
-        await markPlanCompletionSent(userId, projectId, token);
-      }
-
-      // 2. Streak Milestones (7, 30, 100 days)
-      const milestones = [7, 30, 100];
-      if (milestones.includes(currentStreak) && lastStreakMilestoneSent !== currentStreak) {
-        const name = resolveUserName(fields);
-        await sendStreakMilestoneEmail(email, name, currentStreak, env.RESEND_API_KEY);
-        await sendPushNotification(userId, "Daily Reading Milestone", `Incredible! You have spent ${currentStreak} consecutive days in the Word.`, env);
-        await markStreakMilestoneSent(userId, projectId, currentStreak, token);
-      }
+    if (localHour === 12) {
+      await checkUserMilestones(fields, userId, email, token, env);
     }
 
     // Case G: Weekly Start Plan Reminder (on Sunday at local 10 AM, if they don't have an active plan)
@@ -1349,6 +1336,180 @@ async function markStreakMilestoneSent(userId, projectId, streakDays, authToken)
     ["lastStreakMilestoneSent"],
     authToken
   );
+}
+
+async function markMilestonesUnlocked(userId, projectId, milestoneIds, authToken) {
+  const values = milestoneIds.map(id => ({ stringValue: id }));
+  await updateUserField(
+    userId,
+    projectId,
+    { unlockedMilestones: { arrayValue: { values } } },
+    ["unlockedMilestones"],
+    authToken
+  );
+}
+
+async function sendMilestoneEmail(email, name, milestoneName, milestoneDescription, resendApiKey) {
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
+      <div style="text-align: center; margin-bottom: 25px;">
+        <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
+        <h2 style="color: #7c3aed; margin-top: 10px; font-weight: 800; font-size: 22px;">Milestone Achieved!</h2>
+      </div>
+      <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
+      <p style="font-size: 15px; line-height: 1.6;">Congratulations! You have unlocked a new reading milestone on Anchor:</p>
+      <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0; border: 1px solid #eaeaea;">
+        <div style="font-size: 40px; margin-bottom: 10px;">🏆</div>
+        <h3 style="margin: 0; color: #7c3aed; font-size: 18px; font-weight: 800;">${milestoneName}</h3>
+        <p style="margin: 5px 0 0 0; color: #64748b; font-size: 14px;">${milestoneDescription}</p>
+      </div>
+      <p style="font-size: 15px; line-height: 1.6;">Consistency in the Word anchors your spiritual journey. Keep up the great pace and continue checking off your readings!</p>
+      <div style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+        <a href="https://anchor.biblescriptura.com/daily-reading-dashboard" style="display: inline-block; padding: 12px 28px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.15);">Open Your Dashboard</a>
+      </div>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 25px 0;" />
+      <p style="color: #78716c; font-size: 11px; text-align: center; line-height: 1.4; margin: 0;">Sent by Anchor, a product of <a href="https://biblescriptura.com" style="color: #7c3aed; text-decoration: underline; font-weight: 600;">Scriptura</a>. Bible progress, simplified.<br />You received this email because you unlocked a milestone on Anchor.</p>
+    </div>
+  `;
+  await sendEmail(email, `Milestone Achieved: ${milestoneName}!`, html, resendApiKey);
+}
+
+async function checkUserMilestones(fields, userId, email, token, env) {
+  const projectId = env.FIREBASE_PROJECT_ID;
+  const timezone = fields.timezone?.stringValue || "UTC";
+
+  let activePlan = fields.activePlan?.mapValue?.fields;
+  const activeGroupId = fields.activeGroupId?.stringValue;
+  let isGroupPlan = false;
+  let memberProgressFields = null;
+
+  if (!activePlan && activeGroupId) {
+    const groupUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${activeGroupId}`;
+    const groupRes = await fetch(groupUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (groupRes.ok) {
+      const groupDoc = await groupRes.json();
+      activePlan = groupDoc.fields?.plan?.mapValue?.fields;
+      isGroupPlan = true;
+
+      const memberUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${activeGroupId}/members/${userId}`;
+      const memberRes = await fetch(memberUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (memberRes.ok) {
+        const memberDoc = await memberRes.json();
+        memberProgressFields = memberDoc.fields;
+      }
+    }
+  }
+
+  const unlockedValues = fields.unlockedMilestones?.arrayValue?.values || [];
+  const unlockedIds = unlockedValues.map(v => v.stringValue).filter(Boolean);
+
+  const newlyUnlocked = [];
+
+  const checkUnlock = (id) => !unlockedIds.includes(id);
+
+  if (activeGroupId && checkUnlock('first_group')) {
+    newlyUnlocked.push({
+      id: 'first_group',
+      name: 'Social Reader',
+      description: 'Joined your first reading group'
+    });
+  }
+
+  if (activePlan) {
+    if (checkUnlock('first_plan')) {
+      newlyUnlocked.push({
+        id: 'first_plan',
+        name: 'Architect',
+        description: 'Created your first reading plan'
+      });
+    }
+
+    const currentUtcDate = new Date();
+    const localDateStr = getLocalDateString(timezone, currentUtcDate);
+    const yesterdayUtcDate = new Date(currentUtcDate.getTime() - 24 * 60 * 60 * 1000);
+    const localYesterdayStr = getLocalDateString(timezone, yesterdayUtcDate);
+
+    let chaptersCompleted = 0;
+    let currentStreak = 0;
+    let booksCompleted = 0;
+
+    if (isGroupPlan && memberProgressFields) {
+      const daysCompleted = parseInt(memberProgressFields.daysCompleted?.integerValue || "0");
+      chaptersCompleted = daysCompleted * 3;
+      const completedDatesArray = memberProgressFields.completedDates?.arrayValue?.values || [];
+      currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
+      booksCompleted = parseInt(memberProgressFields.booksCompleted?.integerValue || "0");
+    } else {
+      const progressStats = activePlan.progressStats?.mapValue?.fields;
+      if (progressStats) {
+        chaptersCompleted = parseInt(progressStats.chaptersCompleted?.integerValue || "0");
+        const completedDatesArray = progressStats.completedDates?.arrayValue?.values || [];
+        currentStreak = calculateStreak(completedDatesArray, localDateStr, localYesterdayStr);
+        booksCompleted = parseInt(progressStats.booksCompleted?.integerValue || "0");
+      }
+    }
+
+    const totalDays = parseInt(activePlan.totalDays?.integerValue || "0");
+    const totalChapters = totalDays * 3;
+    const completionPercentage = totalChapters > 0 ? Math.round((chaptersCompleted / totalChapters) * 100) : 0;
+
+    const rules = [
+      { id: 'first_chapter', name: 'First Steps', description: 'Read your first chapter', check: () => chaptersCompleted >= 1 },
+      { id: 'streak_3', name: 'Steadfast Start', description: 'Maintain a 3-day reading streak', check: () => currentStreak >= 3 },
+      { id: 'streak_7', name: 'Faithful Habit', description: 'Maintain a 7-day reading streak', check: () => currentStreak >= 7 },
+      { id: 'book_1', name: 'Book Finisher', description: 'Completed your first full book of the Bible', check: () => booksCompleted >= 1 },
+      { id: 'book_5', name: 'Pentateuch Pilgrim', description: 'Completed reading 5 books of the Bible', check: () => booksCompleted >= 5 },
+      { id: 'chapters_50', name: 'Devoted Reader', description: 'Read 50 chapters of the Word', check: () => chaptersCompleted >= 50 },
+      { id: 'streak_30', name: 'Enduring Light', description: 'Maintain a 30-day reading streak', check: () => currentStreak >= 30 },
+      { id: 'chapters_100', name: 'Keeper of Wisdom', description: 'Read 100 chapters of the Word', check: () => chaptersCompleted >= 100 },
+      { id: 'book_33', name: 'Halfway Mark', description: 'Completed reading 33 books of the Bible', check: () => booksCompleted >= 33 },
+      { id: 'streak_100', name: 'On Fire', description: 'Maintain a 100-day reading streak', check: () => currentStreak >= 100 },
+      { id: 'book_all', name: 'The Living Word', description: 'Completed reading all 66 books of the Bible', check: () => booksCompleted >= 66 },
+      { id: 'plan_complete', name: 'Steadfast Heart', description: 'Complete your reading plan', check: () => totalChapters > 0 && chaptersCompleted >= totalChapters }
+    ];
+
+    for (const rule of rules) {
+      if (checkUnlock(rule.id) && rule.check()) {
+        newlyUnlocked.push(rule);
+      }
+    }
+
+    if (newlyUnlocked.length > 0) {
+      const name = resolveUserName(fields);
+      const updatedIds = [...unlockedIds, ...newlyUnlocked.map(m => m.id)];
+
+      await markMilestonesUnlocked(userId, projectId, updatedIds, token);
+
+      for (const m of newlyUnlocked) {
+        if (m.id === 'plan_complete') {
+          const planName = activePlan.name?.stringValue || "Bible Reading Plan";
+          const pdfBytes = await buildPdfBuffer(name, chaptersCompleted, currentStreak, totalChapters);
+          const base64Pdf = arrayBufferToBase64(pdfBytes);
+          await sendPlanCompletionEmail(email, name, planName, chaptersCompleted, currentStreak, totalChapters, base64Pdf, env.RESEND_API_KEY);
+          await sendPushNotification(userId, "Plan Completed! 🏆", `Congratulations! You have successfully completed "${planName}"!`, env);
+        } else {
+          await sendMilestoneEmail(email, name, m.name, m.description, env.RESEND_API_KEY);
+          await sendPushNotification(userId, "Milestone Achieved! 🏆", `You unlocked: ${m.name}! ${m.description}.`, env);
+        }
+      }
+    }
+  } else if (newlyUnlocked.length > 0) {
+    const updatedIds = [...unlockedIds, ...newlyUnlocked.map(m => m.id)];
+    await markMilestonesUnlocked(userId, projectId, updatedIds, token);
+    const name = resolveUserName(fields);
+    for (const m of newlyUnlocked) {
+      await sendMilestoneEmail(email, name, m.name, m.description, env.RESEND_API_KEY);
+      await sendPushNotification(userId, "Milestone Achieved! 🏆", `You unlocked: ${m.name}! ${m.description}.`, env);
+    }
+  }
 }
 
 // ── JWT OAuth Helper for Google Service Accounts in Cloudflare Workers ──

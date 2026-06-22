@@ -36,7 +36,7 @@ const AppFooter = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           {/* Brand */}
           <Link to="/daily-reading-dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/anchor.png" alt="Anchor" className="h-7 w-7 object-contain" />
+            <img src="/app_icon.png" alt="Anchor" className="h-7 w-7 object-contain" />
             <span className="text-base font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
           </Link>
 

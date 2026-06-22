@@ -15,7 +15,7 @@ import VerseOfTheDay from './components/VerseOfTheDay';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { generateDailyTimeline, BIBLE_BOOKS_DATA, calculateStreak } from '../../utils/planHelpers';
+import { generateDailyTimeline, BIBLE_BOOKS_DATA, calculateStreak, getLatestAchievedMilestone } from '../../utils/planHelpers';
 import { onSnapshot, doc, updateDoc, increment, setDoc, query, collection, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import GroupDetailsModal from '../group-management/components/GroupDetailsModal';
@@ -192,13 +192,16 @@ const DailyReadingDashboard = () => {
     }))
   })) : [];
 
-  const latestMilestone = planData ? {
-    title: progressStats.daysCompleted === 0 ? 'First Milestone Unlocked!' : `Milestone Reached!`,
-    description: progressStats.daysCompleted === 0 
-      ? `Successfully created your reading plan: ${planData.name}!`
-      : `You completed Day ${progressStats.daysCompleted} of your reading plan!`,
-    date: new Date(planData.startDate)
-  } : null;
+  const latestMilestone = planData
+    ? getLatestAchievedMilestone(
+        progressStats.chaptersCompleted,
+        progressStats.currentStreak,
+        progressStats.booksCompleted || 0,
+        currentUser?.activeGroupId,
+        planData.totalDays ? Math.round((progressStats.daysCompleted / planData.totalDays) * 100) : 0,
+        planData.startDate
+      )
+    : null;
 
   const allChapterIds = todayAssignments?.flatMap(a => a?.chapters?.map(c => c?.id));
   const isAllCompleted = allChapterIds?.length === 0 || (allChapterIds?.length > 0 && allChapterIds?.every(id => completedChapters?.includes(id)));
@@ -322,6 +325,24 @@ const DailyReadingDashboard = () => {
           completedChapters: increment(todayAssignments.flatMap(a => a.chapters).length)
         });
       }
+
+      // Check milestones dynamically via worker
+      try {
+        fetch('https://anchor-email-worker.emaxstone12.workers.dev/check-milestones', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.uid,
+            email: currentUser.email,
+            name: currentUser.fullName || currentUser.displayName || ''
+          })
+        });
+      } catch (workerErr) {
+        console.warn('Failed to trigger check-milestones worker:', workerErr);
+      }
+
       setCompletedChapters([]);
     } catch (err) {
       console.error('Failed to save day progress:', err);

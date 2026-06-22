@@ -3,7 +3,7 @@
   "name": "anchor",
   "icons": [
     {
-      "src": "anchor.png",
+      "src": "app_icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }

@@ -13,7 +13,7 @@ function Icon({
     if (name === 'Anchor') {
         return (
             <img
-                src="/anchor.png"
+                src="/app_icon.png"
                 alt="Anchor"
                 style={{ width: size, height: size, objectFit: 'contain' }}
                 className={className}
