@@ -1,3 +1,10 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Disallow: /daily-reading-dashboard
+Disallow: /group-management
+Disallow: /progress-reports
+Disallow: /plan-creation-wizard
+Disallow: /settings
+Disallow: /group-creation-wizard
+
+Sitemap: https://anchor.biblescriptura.com/sitemap.xml

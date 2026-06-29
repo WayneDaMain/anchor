@@ -4,6 +4,7 @@ import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
 import Icon from '../../components/AppIcon';
 import Footer from '../landing-page/components/Footer';
+import SEO from '../../components/SEO';
 
 const Contact = () => {
   const navigate = useNavigate();
@@ -11,7 +12,6 @@ const Contact = () => {
   const [status, setStatus] = useState(null); // 'success', 'error', 'sending'
 
   useEffect(() => {
-    document.title = 'Anchor — Contact Us';
     window.scrollTo(0, 0);
   }, []);
 
@@ -48,6 +48,12 @@ const Contact = () => {
 
   return (
     <PageTransition className="min-h-screen flex flex-col justify-between overflow-hidden bg-background text-foreground">
+      <SEO 
+        title="Contact Us — Anchor"
+        description="Have questions or feedback about Anchor? Get in touch with our team. We'd love to hear from you."
+        keywords={['Contact Anchor', 'feedback', 'customer support', 'help']}
+        canonical="https://anchor.biblescriptura.com/contact"
+      />
       {/* Exquisite Subtle Grid Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 dark:from-zinc-950 via-white dark:via-background to-white dark:to-background" />

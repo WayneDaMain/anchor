@@ -1,20 +1,22 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
 import Icon from '../../components/AppIcon';
+import SEO from '../../components/SEO';
 
 const isNative = Capacitor.isNativePlatform();
 const homeTo = isNative ? '/onboarding' : '/landing-page';
 
 const Privacy = () => {
-  useEffect(() => {
-    document.title = 'Privacy Policy — Anchor';
-  }, []);
-
   return (
     <PageTransition className="min-h-screen bg-background">
+      <SEO 
+        title="Privacy Policy — Anchor"
+        description="Read our Privacy Policy to understand how Anchor collects, uses, and protects your information."
+        canonical="https://anchor.biblescriptura.com/privacy"
+      />
       {/* Header */}
       <div className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">

@@ -4,17 +4,23 @@ import PageTransition from '../../components/animations/PageTransition';
 import FadeIn from '../../components/animations/FadeIn';
 import Icon from '../../components/AppIcon';
 import Footer from '../landing-page/components/Footer';
+import SEO from '../../components/SEO';
 
 const About = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = 'Anchor — About Us';
     window.scrollTo(0, 0);
   }, []);
 
   return (
     <PageTransition className="min-h-screen flex flex-col justify-between overflow-hidden bg-background text-foreground">
+      <SEO 
+        title="About Us — Anchor"
+        description="Learn about Anchor, a simple, distraction-free tool designed to help you build a consistent Bible reading habit, individually or with friends."
+        keywords={['About Anchor', 'Bible progress', 'Scripture groups', 'accountability', 'Bible tracker']}
+        canonical="https://anchor.biblescriptura.com/about"
+      />
       {/* Exquisite Subtle Grid Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 dark:from-zinc-950 via-white dark:via-background to-white dark:to-background" />
