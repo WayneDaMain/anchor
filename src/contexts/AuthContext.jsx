@@ -11,8 +11,9 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { compressImage } from '../utils/imageHelpers';
 import OneSignal from '@onesignal/capacitor-plugin';
@@ -235,6 +236,67 @@ export const AuthProvider = ({ children }) => {
   // ── Sign Out ──
   const logout = () => signOut(auth);
 
+  // ── Delete Account ──
+  const deleteAccount = async () => {
+    if (!currentUser) throw new Error('Not authenticated');
+    const user = auth.currentUser;
+    if (!user) throw new Error('No firebase user found');
+
+    const uid = user.uid;
+    const activeGroupId = currentUser.activeGroupId;
+
+    // 1. Clean up group membership if applicable
+    if (activeGroupId) {
+      try {
+        const groupRef = doc(db, 'groups', activeGroupId);
+        const groupDoc = await getDoc(groupRef);
+        if (groupDoc.exists()) {
+          const groupData = groupDoc.data();
+          if (groupData.creatorId === uid) {
+            // Disband the group
+            await deleteDoc(groupRef);
+          } else {
+            // Leave the group
+            await deleteDoc(doc(db, 'groups', activeGroupId, 'members', uid));
+            await updateDoc(groupRef, {
+              memberCount: increment(-1)
+            });
+          }
+        }
+      } catch (groupErr) {
+        console.warn('Failed to clean up group membership during account deletion:', groupErr);
+        // Continue with deleting the user profile and auth account
+      }
+    }
+
+    // 2. Delete user document from Firestore
+    try {
+      await deleteDoc(doc(db, 'users', uid));
+    } catch (dbErr) {
+      console.warn('Failed to delete user document from Firestore:', dbErr);
+      // Continue to delete auth account anyway
+    }
+
+    // 3. Trigger goodbye email via Cloudflare Worker API
+    try {
+      fetch('https://anchor-email-worker.emaxstone12.workers.dev/goodbye', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: user.email,
+          name: currentUser.fullName || user.displayName || 'there'
+        })
+      });
+    } catch (emailErr) {
+      console.warn('Failed to send goodbye email:', emailErr.message);
+    }
+
+    // 4. Delete user from Firebase Auth
+    await deleteUser(user);
+  };
+
   const value = {
     currentUser,
     loading,
@@ -246,6 +308,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateActivePlan,
     updateUserProfile,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

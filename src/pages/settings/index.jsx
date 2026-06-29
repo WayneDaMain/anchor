@@ -7,17 +7,19 @@ import MobileBottomNav from '../../components/ui/MobileBottomNav';
 import AppFooter from '../../components/ui/AppFooter';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import { useAuth } from '../../contexts/AuthContext';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { currentUser, uploadProfilePhoto, updateUserProfile, logout } = useAuth();
+  const { currentUser, uploadProfilePhoto, updateUserProfile, logout, deleteAccount } = useAuth();
   const fileInputRef = useRef(null);
 
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Profile fields (local state until Firestore write is wired)
   const [displayName, setDisplayName] = useState(currentUser?.fullName || currentUser?.displayName || '');
@@ -180,6 +182,53 @@ const Settings = () => {
     } catch {
       // ignore
     }
+  };
+
+  const handleDeleteAccount = () => {
+    setConfirmConfig({
+      title: 'Delete Account?',
+      message: 'This action is permanent and cannot be undone. All your progress, groups, and reading history will be permanently deleted.',
+      confirmText: 'Delete Account',
+      cancelText: 'Cancel',
+      type: 'danger',
+      onConfirm: async () => {
+        setIsDeleting(true);
+        try {
+          await deleteAccount();
+          navigate('/login');
+        } catch (err) {
+          console.error('Failed to delete account:', err);
+
+          if (err.code === 'auth/requires-recent-login') {
+            setConfirmConfig({
+              title: 'Re-authentication Required',
+              message: 'For security reasons, deleting your account requires a recent login. Please log out, sign back in, and try again.',
+              confirmText: 'Log Out & Re-authenticate',
+              cancelText: 'Cancel',
+              type: 'warning',
+              onConfirm: async () => {
+                try {
+                  await logout();
+                  navigate('/login');
+                } catch (logoutErr) {
+                  console.error('Logout failed:', logoutErr);
+                }
+              }
+            });
+          } else {
+            setConfirmConfig({
+              title: 'Deletion Failed',
+              message: err.message || 'Failed to delete account. Please try again later.',
+              confirmText: 'OK',
+              cancelText: null,
+              type: 'danger'
+            });
+          }
+        } finally {
+          setIsDeleting(false);
+        }
+      }
+    });
   };
 
   return (
@@ -356,8 +405,8 @@ const Settings = () => {
                                 }
                               }}
                               className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${morningHour < 12
-                                  ? 'bg-card text-foreground shadow-sm'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
                               AM
@@ -370,8 +419,8 @@ const Settings = () => {
                                 }
                               }}
                               className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${morningHour >= 12
-                                  ? 'bg-card text-foreground shadow-sm'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
                               PM
@@ -462,8 +511,8 @@ const Settings = () => {
                                 }
                               }}
                               className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${warningHour < 12
-                                  ? 'bg-card text-foreground shadow-sm'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
                               AM
@@ -476,8 +525,8 @@ const Settings = () => {
                                 }
                               }}
                               className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all select-none ${warningHour >= 12
-                                  ? 'bg-card text-foreground shadow-sm'
-                                  : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
                               PM
@@ -544,8 +593,8 @@ const Settings = () => {
                   <button
                     onClick={handleLogout}
                     className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-gentle text-center ${logoutConfirm
-                        ? 'bg-red-600 text-white hover:bg-red-700'
-                        : 'border border-red-200 text-red-600 hover:bg-red-50'
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'border border-red-200 text-red-600 hover:bg-red-50'
                       }`}
                   >
                     {logoutConfirm ? 'Confirm Logout' : 'Log Out'}
@@ -556,8 +605,12 @@ const Settings = () => {
                     <p className="text-sm font-medium text-foreground">Delete Account</p>
                     <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
                   </div>
-                  <button className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-gentle text-center">
-                    Delete
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-gentle text-center disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -568,6 +621,17 @@ const Settings = () => {
       </main>
       <AppFooter />
       <MobileBottomNav />
+      <ConfirmationModal
+        isOpen={!!confirmConfig}
+        onClose={() => setConfirmConfig(null)}
+        title={confirmConfig?.title}
+        message={confirmConfig?.message}
+        confirmText={confirmConfig?.confirmText}
+        cancelText={confirmConfig?.cancelText}
+        type={confirmConfig?.type}
+        onConfirm={confirmConfig?.onConfirm}
+        onCancel={confirmConfig?.onCancel}
+      />
     </PageTransition>
   );
 };

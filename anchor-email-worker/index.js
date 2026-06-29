@@ -62,6 +62,18 @@ export default {
         });
       }
 
+      if (url.pathname === '/goodbye' && request.method === 'POST') {
+        const { email, name } = await request.json();
+        if (!email) {
+          return new Response("Email is required", { status: 400, headers: corsHeaders });
+        }
+        await sendGoodbyeEmail(email, name || "there", env.RESEND_API_KEY);
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (url.pathname === '/plan-started' && request.method === 'POST') {
         const { userId, email, name, planName } = await request.json();
         if (!email || !planName) {
@@ -687,6 +699,25 @@ async function sendWelcomeEmail(email, name, resendApiKey) {
   `;
 
   await sendEmail(email, "Welcome to Anchor!", welcomeHtml, resendApiKey);
+}
+
+async function sendGoodbyeEmail(email, name, resendApiKey) {
+  const goodbyeHtml = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; color: #1c1917;">
+      <div style="text-align: center; margin-bottom: 25px;">
+        <img src="https://anchor.biblescriptura.com/anchor.png" alt="Anchor Logo" style="width: 48px; height: 48px; object-fit: contain;" />
+        <h2 style="color: #ef4444; margin-top: 10px; font-weight: 800; font-size: 22px;">Goodbye from Anchor</h2>
+      </div>
+      <p style="font-size: 15px; line-height: 1.6;">Hi ${name},</p>
+      <p style="font-size: 15px; line-height: 1.6;">Your account has been deleted, and you will no longer receive any updates, daily reading reminders, or group notifications from us.</p>
+      <p style="font-size: 15px; line-height: 1.6;">We're sorry to see you go! If you ever decide to return, you can sign up again at any time to resume tracking your Bible reading habits.</p>
+      <p style="font-size: 15px; line-height: 1.6;">Thank you for using Anchor, and we wish you all the best on your spiritual journey.</p>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 25px 0;" />
+      <p style="color: #78716c; font-size: 11px; text-align: center; line-height: 1.4; margin: 0;">Sent by Anchor, a product of <a href="https://biblescriptura.com" style="color: #7c3aed; text-decoration: underline; font-weight: 600;">Scriptura</a>.<br />This confirms your account has been successfully deleted.</p>
+    </div>
+  `;
+
+  await sendEmail(email, "Your Anchor account has been deleted", goodbyeHtml, resendApiKey);
 }
 
 async function sendPlanStartedEmail(email, name, planName, resendApiKey) {
