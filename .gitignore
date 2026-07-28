@@ -8,9 +8,11 @@ package-lock.json
 vite.config.*s.*
 .env
 
-# Android signing
+# Android signing & binaries
 android/key.properties
 android/app/release.keystore
+*.apk
+*.aab
 
 # Cloudflare Wrangler local secrets
 .dev.vars
