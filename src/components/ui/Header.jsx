@@ -61,7 +61,7 @@ const Header = () => {
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center">
               <Link to="/daily-reading-dashboard" className="flex items-center space-x-2.5">
-                <img src="/app_icon.png" alt="Anchor" className="h-8 w-8 object-contain" />
+                <Icon name="Anchor" size={32} className="w-8 h-8" />
                 <span className="text-lg font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
               </Link>
             </div>

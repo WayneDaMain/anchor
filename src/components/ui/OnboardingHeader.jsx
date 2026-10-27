@@ -41,9 +41,7 @@ const OnboardingHeader = ({ currentStep = 1, totalSteps = 4 }) => {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <Link to={currentUser ? '/daily-reading-dashboard' : homeTo} className="flex items-center space-x-2.5">
-              <div className="text-primary flex items-center justify-center">
-                <Icon name="Anchor" size={24} color="var(--color-primary)" />
-              </div>
+              <Icon name="Anchor" size={30} className="w-7 h-7" />
               <span className="text-lg font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
             </Link>
 

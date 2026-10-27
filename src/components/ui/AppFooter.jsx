@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import Icon from '../AppIcon';
 
 const AppFooter = () => {
   const currentYear = new Date().getFullYear();
@@ -36,7 +37,7 @@ const AppFooter = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
           {/* Brand */}
           <Link to="/daily-reading-dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/app_icon.png" alt="Anchor" className="h-7 w-7 object-contain" />
+            <Icon name="Anchor" size={28} className="w-7 h-7" />
             <span className="text-base font-heading font-extrabold text-foreground tracking-tight">Anchor</span>
           </Link>
 

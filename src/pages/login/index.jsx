@@ -31,7 +31,7 @@ const Login = () => {
 
         <div className="relative z-10">
           <Link to={backTo} className="flex items-center space-x-2.5 mb-16">
-            <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
+            <Icon name="Anchor" size={28} className="w-7 h-7" />
             <span className="text-base font-bold text-slate-900 tracking-tight font-sans">Anchor</span>
           </Link>
 

@@ -58,9 +58,9 @@ const HeroSection = () => {
       <header className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 h-[88px] flex items-center justify-between">
         <div
           onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 sm:gap-2 cursor-pointer flex-shrink-0"
+          className="flex items-center gap-2 cursor-pointer flex-shrink-0"
         >
-          <Icon name="Anchor" size={24} className="w-6 h-6 object-contain text-slate-900 dark:text-zinc-100" />
+          <Icon name="Anchor" size={28} className="w-7 h-7" />
           <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-zinc-100 tracking-tight font-sans">Anchor</span>
         </div>
 

@@ -11,14 +11,24 @@ function Icon({
     ...props
 }) {
     if (name === 'Anchor') {
+        const padding = size <= 24 ? 3 : size <= 32 ? 4 : size <= 40 ? 6 : 8;
         return (
-            <img
-                src="/app_icon.png"
-                alt="Anchor"
-                style={{ width: size, height: size, objectFit: 'contain' }}
-                className={className}
-                {...props}
-            />
+            <span
+                className={`inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-zinc-800 shadow-sm border border-slate-800/10 dark:border-zinc-700/50 flex-shrink-0 ${className}`}
+                style={{
+                    width: size,
+                    height: size,
+                    padding: `${padding}px`,
+                    boxSizing: 'border-box'
+                }}
+            >
+                <img
+                    src="/app_icon.png"
+                    alt="Anchor"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    {...props}
+                />
+            </span>
         );
     }
 

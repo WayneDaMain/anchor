@@ -67,7 +67,7 @@ const Contact = () => {
           onClick={() => navigate('/')}
           className="flex items-center gap-2 cursor-pointer select-none"
         >
-          <Icon name="Anchor" size={24} className="w-6 h-6 object-contain" />
+          <Icon name="Anchor" size={28} className="w-7 h-7" />
           <span className="text-base font-bold text-foreground tracking-tight font-sans">Anchor</span>
         </div>
 
