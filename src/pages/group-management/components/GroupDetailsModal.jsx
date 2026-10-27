@@ -2,17 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '../../../components/AppIcon';
 import { useAuth } from '../../../contexts/AuthContext';
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  doc,
-  updateDoc,
-  deleteDoc
-} from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { d1Api } from '../../../services/d1Api';
 import { compressImage } from '../../../utils/imageHelpers';
 import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 
@@ -59,7 +49,7 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
       type: 'danger',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'groups', currentGroup.id));
+          await d1Api.deleteGroup(currentGroup.id);
           onClose();
         } catch (err) {
           console.error("Failed to delete group:", err);
@@ -79,11 +69,15 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     if (!editedGroupName.trim()) return;
     setIsSavingDetails(true);
     try {
-      const groupDocRef = doc(db, 'groups', currentGroup.id);
-      await updateDoc(groupDocRef, {
+      await d1Api.updateGroup(currentGroup.id, {
         name: editedGroupName.trim(),
         description: editedDescription.trim()
       });
+      setCurrentGroup(prev => ({
+        ...prev,
+        name: editedGroupName.trim(),
+        description: editedDescription.trim()
+      }));
     } catch (err) {
       console.error("Failed to update group details:", err);
       setConfirmConfig({
@@ -97,6 +91,7 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
       setIsSavingDetails(false);
     }
   };
+
 
   const handleShareInModal = async (e) => {
     if (e) e.stopPropagation();
@@ -128,15 +123,26 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  useEffect(() => {
+  const loadGroupDetails = async () => {
     if (!group?.id) return;
-    const groupRef = doc(db, 'groups', group.id);
-    const unsubscribeGroup = onSnapshot(groupRef, (snap) => {
-      if (snap.exists()) {
-        setCurrentGroup({ id: snap.id, ...snap.data() });
-      }
-    });
-    return unsubscribeGroup;
+    try {
+      const [gData, mList, msgList] = await Promise.all([
+        d1Api.getGroup(group.id),
+        d1Api.getGroupMembers(group.id),
+        d1Api.getGroupMessages(group.id)
+      ]);
+      if (gData) setCurrentGroup(gData);
+      if (mList) setMembers(mList);
+      if (msgList) setMessages(msgList);
+    } catch (err) {
+      console.warn("Could not load group details from D1:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadGroupDetails();
+    const interval = setInterval(loadGroupDetails, 3000);
+    return () => clearInterval(interval);
   }, [group?.id]);
 
   const handleGroupPhotoUpload = async (e) => {
@@ -146,9 +152,8 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
     setGroupPhotoUploading(true);
     try {
       const base64Url = await compressImage(file, 400, 200, 0.7);
-
-      const groupDocRef = doc(db, 'groups', currentGroup.id);
-      await updateDoc(groupDocRef, { photoURL: base64Url });
+      await d1Api.updateGroup(currentGroup.id, { photoURL: base64Url });
+      setCurrentGroup(prev => ({ ...prev, photoURL: base64Url }));
     } catch (err) {
       console.error('Failed to upload group photo:', err);
     } finally {
@@ -158,32 +163,6 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   };
 
   const chatEndRef = useRef(null);
-
-  useEffect(() => {
-    if (!group) return;
-
-    // 1. Subscribe to members list
-    const membersQuery = collection(db, 'groups', group.id, 'members');
-    const unsubscribeMembers = onSnapshot(membersQuery, (snap) => {
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMembers(list);
-    });
-
-    // 2. Subscribe to messages (ordered by timestamp)
-    const messagesQuery = query(
-      collection(db, 'groups', group.id, 'messages'),
-      orderBy('timestamp', 'asc')
-    );
-    const unsubscribeMessages = onSnapshot(messagesQuery, (snap) => {
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMessages(list);
-    });
-
-    return () => {
-      unsubscribeMembers();
-      unsubscribeMessages();
-    };
-  }, [group.id]);
 
   // Auto-scroll chat to the bottom when messages load
   useEffect(() => {
@@ -205,7 +184,7 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
   // Calculate collective average progress
   const averageProgress = members.length > 0
     ? Math.round(
-      members.reduce((acc, m) => acc + ((m.daysCompleted || 0) / currentGroup.totalDays * 100), 0) / members.length
+      members.reduce((acc, m) => acc + ((m.daysCompleted || 0) / (currentGroup?.totalDays || 1) * 100), 0) / members.length
     )
     : 0;
 
@@ -215,14 +194,16 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
 
     const messageText = newMessage.trim();
     try {
-      await addDoc(collection(db, 'groups', currentGroup.id, 'messages'), {
+      const sentMsg = await d1Api.sendGroupMessage(currentGroup.id, {
         senderId: currentUser.uid,
-        senderName: currentUser.displayName || currentUser.email.split('@')[0],
-        senderPhoto: currentUser.photoURL || null,
+        senderName: currentUser.displayName || currentUser.fullName || currentUser.email.split('@')[0],
+        senderPhotoURL: currentUser.photoURL || null,
         text: messageText,
         timestamp: new Date().toISOString()
       });
+      setMessages(prev => [...prev, sentMsg]);
       setNewMessage('');
+
 
       // Send group chat message push notification via worker
       try {
@@ -490,8 +471,8 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                         onClick={async () => {
                           try {
                             const isEnabled = currentGroup?.isChatEnabled !== false;
-                            const groupDocRef = doc(db, 'groups', currentGroup.id);
-                            await updateDoc(groupDocRef, { isChatEnabled: !isEnabled });
+                            await d1Api.updateGroup(currentGroup.id, { isChatEnabled: !isEnabled });
+                            setCurrentGroup(prev => ({ ...prev, isChatEnabled: !isEnabled }));
                           } catch (err) {
                             console.error("Failed to toggle chat:", err);
                           }
@@ -521,20 +502,21 @@ const GroupDetailsModal = ({ group, onClose, initialTab = 'members' }) => {
                           try {
                             const isPrivate = currentGroup?.isPrivate === true;
                             const newPrivacy = !isPrivate;
-                            const groupDocRef = doc(db, 'groups', currentGroup.id);
                             
-                            // Update Firestore
-                            await updateDoc(groupDocRef, { isPrivate: newPrivacy });
+                            // Update Cloudflare D1
+                            await d1Api.updateGroup(currentGroup.id, { isPrivate: newPrivacy });
+                            setCurrentGroup(prev => ({ ...prev, isPrivate: newPrivacy }));
 
                             // Add chat message
                             const messageText = `changed the group privacy to ${newPrivacy ? 'Private (Invite Only)' : 'Public'}`;
-                            await addDoc(collection(db, 'groups', currentGroup.id, 'messages'), {
+                            const sysMsg = await d1Api.sendGroupMessage(currentGroup.id, {
                               senderId: currentUser.uid,
-                              senderName: currentUser.displayName || currentUser.email.split('@')[0],
-                              senderPhoto: currentUser.photoURL || null,
+                              senderName: currentUser.displayName || currentUser.fullName || currentUser.email.split('@')[0],
+                              senderPhotoURL: currentUser.photoURL || null,
                               text: messageText,
                               timestamp: new Date().toISOString()
                             });
+                            setMessages(prev => [...prev, sysMsg]);
 
                             // Trigger push notifications via worker
                             try {

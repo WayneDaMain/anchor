@@ -69,9 +69,10 @@
     "build": "vite build --sourcemap",
     "serve": "vite preview",
     "wrangler-deploy": "cd anchor-email-worker && npx wrangler deploy",
+    "upload-apk": "cd anchor-email-worker && npx wrangler r2 object put anchor-releases/Anchor.apk --file=../android/app/build/outputs/apk/release/app-release.apk --remote",
     "android-debug": "npm run build && npx cap sync android && npx cap run android --live-reload",
     "android": "npm run build && npx cap sync android && npx cap run android",
-    "android-release": "npm run build && npx cap sync android && cd android && gradlew assembleRelease"
+    "android-release": "npm run build && npx cap sync android && cd android && gradlew assembleRelease && cd .. && npm run upload-apk"
   },
   "eslintConfig": {
     "extends": [

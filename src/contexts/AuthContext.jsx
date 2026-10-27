@@ -13,8 +13,8 @@ import {
   getRedirectResult,
   deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
+import { d1Api } from '../services/d1Api';
 import { compressImage } from '../utils/imageHelpers';
 import OneSignal from '@onesignal/capacitor-plugin';
 import { Capacitor } from '@capacitor/core';
@@ -46,11 +46,11 @@ export const AuthProvider = ({ children }) => {
         }
         // Sync user doc / timezone
         await ensureUserDoc(user);
-        // Fetch additional user data from Firestore
+        // Fetch additional user data from Cloudflare D1
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setCurrentUser({ ...user, ...userDoc.data() });
+          const userDoc = await d1Api.getUser(user.uid);
+          if (userDoc) {
+            setCurrentUser({ ...user, ...userDoc });
           } else {
             setCurrentUser(user);
           }
@@ -68,29 +68,26 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // Helper: safely create user doc (don't throw if Firestore is offline)
+  // Helper: safely create / sync user record in D1
   const ensureUserDoc = async (user, extraData = {}) => {
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const snap = await getDoc(userRef);
+      const existingUser = await d1Api.getUser(user.uid);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const defaultSettings = {
-        email: user.email,
-        timezone: tz,
-        emailSettings: {
-          morningReminders: true,
-          streakWarnings: true,
-          morningHour: 7,
-          warningHour: 21
-        }
+        morningReminders: true,
+        streakWarnings: true,
+        morningHour: 7,
+        warningHour: 21
       };
-      if (!snap.exists()) {
-        await setDoc(userRef, {
+
+      if (!existingUser) {
+        await d1Api.upsertUser(user.uid, {
           fullName: user.displayName || extraData.fullName || '',
           email: user.email,
           photoURL: user.photoURL || null,
+          timezone: tz,
+          emailSettings: defaultSettings,
           createdAt: new Date().toISOString(),
-          ...defaultSettings,
           ...extraData,
         });
 
@@ -112,32 +109,30 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         // Update timezone and ensure emailSettings structure exists
-        const existingData = snap.data();
         const updatePayload = {
           timezone: tz,
           emailSettings: {
-            morningReminders: existingData.emailSettings?.morningReminders !== false,
-            streakWarnings: existingData.emailSettings?.streakWarnings !== false,
-            morningHour: existingData.emailSettings?.morningHour || 7,
-            warningHour: existingData.emailSettings?.warningHour || 21
+            morningReminders: existingUser.emailSettings?.morningReminders !== false,
+            streakWarnings: existingUser.emailSettings?.streakWarnings !== false,
+            morningHour: existingUser.emailSettings?.morningHour || 7,
+            warningHour: existingUser.emailSettings?.warningHour || 21
           }
         };
 
-        // Self-heal missing/empty email or fullName fields in Firestore
-        if (!existingData.email && user.email) {
+        if (!existingUser.email && user.email) {
           updatePayload.email = user.email;
         }
-        if ((!existingData.fullName || existingData.fullName === '') && (user.displayName || extraData.fullName)) {
+        if ((!existingUser.fullName || existingUser.fullName === '') && (user.displayName || extraData.fullName)) {
           updatePayload.fullName = user.displayName || extraData.fullName;
         }
 
-        await setDoc(userRef, updatePayload, { merge: true });
+        await d1Api.upsertUser(user.uid, updatePayload);
       }
     } catch (err) {
-      // Firestore offline — auth still succeeded, doc will be created on next online session
-      console.warn('Could not write user doc to Firestore:', err.message);
+      console.warn('Could not sync user profile to Cloudflare D1:', err.message);
     }
   };
+
 
   // ── Sign Up ──
   const signup = async (email, password, fullName) => {
@@ -208,11 +203,7 @@ export const AuthProvider = ({ children }) => {
     } catch (authErr) {
       console.warn('Could not update Firebase Auth profile photoURL (likely due to length limit), saving in Firestore instead:', authErr.message);
     }
-    await setDoc(
-      doc(db, 'users', currentUser.uid),
-      { photoURL: base64Url },
-      { merge: true }
-    );
+    await d1Api.upsertUser(currentUser.uid, { photoURL: base64Url });
     setCurrentUser(prev => prev ? { ...prev, photoURL: base64Url } : null);
     return base64Url;
   };
@@ -220,17 +211,15 @@ export const AuthProvider = ({ children }) => {
   // ── Update Active Plan ──
   const updateActivePlan = async (newPlan) => {
     if (!currentUser) throw new Error('Not authenticated');
-    const userRef = doc(db, 'users', currentUser.uid);
-    await setDoc(userRef, { activePlan: newPlan }, { merge: true });
+    await d1Api.upsertUser(currentUser.uid, { activePlan: newPlan });
     setCurrentUser(prev => prev ? { ...prev, activePlan: newPlan } : null);
   };
 
   // ── Update User Profile ──
   const updateUserProfile = async (data) => {
     if (!currentUser) throw new Error('Not authenticated');
-    const userRef = doc(db, 'users', currentUser.uid);
-    await setDoc(userRef, data, { merge: true });
-    setCurrentUser(prev => prev ? { ...prev, ...data } : null);
+    const updated = await d1Api.upsertUser(currentUser.uid, data);
+    setCurrentUser(prev => prev ? { ...prev, ...updated, ...data } : null);
   };
 
   // ── Sign Out ──
@@ -243,41 +232,15 @@ export const AuthProvider = ({ children }) => {
     if (!user) throw new Error('No firebase user found');
 
     const uid = user.uid;
-    const activeGroupId = currentUser.activeGroupId;
 
-    // 1. Clean up group membership if applicable
-    if (activeGroupId) {
-      try {
-        const groupRef = doc(db, 'groups', activeGroupId);
-        const groupDoc = await getDoc(groupRef);
-        if (groupDoc.exists()) {
-          const groupData = groupDoc.data();
-          if (groupData.creatorId === uid) {
-            // Disband the group
-            await deleteDoc(groupRef);
-          } else {
-            // Leave the group
-            await deleteDoc(doc(db, 'groups', activeGroupId, 'members', uid));
-            await updateDoc(groupRef, {
-              memberCount: increment(-1)
-            });
-          }
-        }
-      } catch (groupErr) {
-        console.warn('Failed to clean up group membership during account deletion:', groupErr);
-        // Continue with deleting the user profile and auth account
-      }
-    }
-
-    // 2. Delete user document from Firestore
+    // 1. Delete user from Cloudflare D1 (and clean up group membership if any)
     try {
-      await deleteDoc(doc(db, 'users', uid));
+      await d1Api.deleteUser(uid);
     } catch (dbErr) {
-      console.warn('Failed to delete user document from Firestore:', dbErr);
-      // Continue to delete auth account anyway
+      console.warn('Failed to delete user document from Cloudflare D1:', dbErr);
     }
 
-    // 3. Trigger goodbye email via Cloudflare Worker API
+    // 2. Trigger goodbye email via Cloudflare Worker API
     try {
       fetch('https://anchor-email-worker.emaxstone12.workers.dev/goodbye', {
         method: 'POST',
@@ -293,7 +256,7 @@ export const AuthProvider = ({ children }) => {
       console.warn('Failed to send goodbye email:', emailErr.message);
     }
 
-    // 4. Delete user from Firebase Auth
+    // 3. Delete user from Firebase Auth
     await deleteUser(user);
   };
 

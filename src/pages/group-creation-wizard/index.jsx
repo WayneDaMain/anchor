@@ -15,9 +15,9 @@ import DurationSelection from '../plan-creation-wizard/components/DurationSelect
 import StyleSelection from '../plan-creation-wizard/components/StyleSelection';
 import { BIBLE_BOOKS_DATA } from '../../utils/planHelpers';
 
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { d1Api } from '../../services/d1Api';
 import { compressImage } from '../../utils/imageHelpers';
+
 
 const GroupCreationWizard = () => {
   const navigate = useNavigate();
@@ -231,8 +231,7 @@ const GroupCreationWizard = () => {
             '2-years': 730
           }[groupData.selectedDuration] || 365;
 
-        const groupRef = doc(collection(db, 'groups'));
-        const groupId = groupRef.id;
+        const groupId = 'grp_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).substring(2, 12));
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
         let photoURL = null;
@@ -260,6 +259,8 @@ const GroupCreationWizard = () => {
           inviteCode: inviteCode,
           photoURL: photoURL || null,
           creatorId: currentUser.uid,
+          creatorName: currentUser.displayName || currentUser.fullName || currentUser.email?.split('@')[0],
+          creatorPhotoURL: currentUser.photoURL || null,
           createdAt: new Date().toISOString(),
           startDate: new Date().toISOString(),
           planName: planName,
@@ -278,22 +279,12 @@ const GroupCreationWizard = () => {
           }
         };
 
-        // Write Group
-        await setDoc(groupRef, newGroupDoc);
-
-        // Add creator as member
-        const memberRef = doc(db, 'groups', groupId, 'members', currentUser.uid);
-        await setDoc(memberRef, {
-          uid: currentUser.uid,
-          displayName: currentUser.displayName || currentUser.email.split('@')[0],
-          photoURL: currentUser.photoURL || null,
-          daysCompleted: 0,
-          completedDates: [],
-          joinedAt: new Date().toISOString()
-        });
+        // Write Group to Cloudflare D1
+        await d1Api.createGroup(newGroupDoc);
 
         // Set user's active group
         await updateUserProfile({ activeGroupId: groupId });
+
 
         // Trigger group joined email notification
         try {

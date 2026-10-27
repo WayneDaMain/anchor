@@ -8,3 +8,13 @@ crons = ["0 * * * *"]
 [vars]
 FIREBASE_PROJECT_ID = "anchor-b8fe6"
 ONESIGNAL_APP_ID = "5b4c867b-da23-4cfb-a96b-68264cd7b09b"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "anchor-db"
+database_id = "d73c55a1-04f2-425e-bbe2-f2490a5a700a"
+
+[[r2_buckets]]
+binding = "RELEASES_BUCKET"
+bucket_name = "anchor-releases"
+

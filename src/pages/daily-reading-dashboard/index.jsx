@@ -16,10 +16,10 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateDailyTimeline, BIBLE_BOOKS_DATA, calculateStreak, getLatestAchievedMilestone } from '../../utils/planHelpers';
-import { onSnapshot, doc, updateDoc, increment, setDoc, query, collection, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { d1Api } from '../../services/d1Api';
 import GroupDetailsModal from '../group-management/components/GroupDetailsModal';
 import PullToRefresh from '../../components/ui/PullToRefresh';
+
 
 const DailyReadingDashboard = () => {
   const navigate = useNavigate();
@@ -59,19 +59,20 @@ const DailyReadingDashboard = () => {
       return;
     }
 
-    const messagesQuery = query(
-      collection(db, 'groups', currentUser.activeGroupId, 'messages'),
-      orderBy('timestamp', 'asc')
-    );
+    const fetchUnread = async () => {
+      try {
+        const lastRead = localStorage.getItem(`lastReadChat_${currentUser.activeGroupId}`) || '1970-01-01T00:00:00.000Z';
+        const msgs = await d1Api.getGroupMessages(currentUser.activeGroupId, lastRead);
+        const unread = (msgs || []).filter(msg => msg.timestamp > lastRead && msg.senderId !== currentUser.uid).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.warn('Failed to fetch unread messages count:', err);
+      }
+    };
 
-    const unsubscribe = onSnapshot(messagesQuery, (snap) => {
-      const lastRead = localStorage.getItem(`lastReadChat_${currentUser.activeGroupId}`) || '1970-01-01T00:00:00.000Z';
-      const list = snap.docs.map(doc => doc.data());
-      const unread = list.filter(msg => msg.timestamp > lastRead && msg.senderId !== currentUser.uid).length;
-      setUnreadCount(unread);
-    });
-
-    return unsubscribe;
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 5000);
+    return () => clearInterval(interval);
   }, [planContext, currentUser?.activeGroupId, currentUser?.uid]);
 
   useEffect(() => {
@@ -91,36 +92,37 @@ const DailyReadingDashboard = () => {
     }
 
     setLoadingGroup(true);
-    const groupRef = doc(db, 'groups', currentUser.activeGroupId);
-    const memberRef = doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid);
+    const fetchGroupAndMember = async () => {
+      try {
+        const [gData, mData] = await Promise.all([
+          d1Api.getGroup(currentUser.activeGroupId),
+          d1Api.getMemberProgress(currentUser.activeGroupId, currentUser.uid)
+        ]);
 
-    const unsubscribeGroup = onSnapshot(groupRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        setGroupData(docSnap.data());
-      } else {
-        setGroupData(null);
-        try {
-          await updateUserProfile({ activeGroupId: null });
-        } catch (err) {
-          console.warn('Failed to auto-clear deleted activeGroupId:', err);
+        if (gData) {
+          setGroupData(gData);
+        } else {
+          setGroupData(null);
+          try {
+            await updateUserProfile({ activeGroupId: null });
+          } catch (err) {
+            console.warn('Failed to auto-clear deleted activeGroupId:', err);
+          }
         }
-      }
-    });
 
-    const unsubscribeMember = onSnapshot(memberRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setMemberProgress(docSnap.data());
-      } else {
-        setMemberProgress(null);
+        setMemberProgress(mData || null);
+      } catch (err) {
+        console.warn('Failed to load group details from D1:', err);
+      } finally {
+        setLoadingGroup(false);
       }
-      setLoadingGroup(false);
-    });
-
-    return () => {
-      unsubscribeGroup();
-      unsubscribeMember();
     };
+
+    fetchGroupAndMember();
+    const interval = setInterval(fetchGroupAndMember, 5000);
+    return () => clearInterval(interval);
   }, [currentUser?.activeGroupId]);
+
 
   const handleCancelPlan = async () => {
     setIsCanceling(true);
@@ -223,10 +225,9 @@ const DailyReadingDashboard = () => {
         };
         await updateActivePlan(updatedPlan);
       } else {
-        const memberRef = doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid);
-        await setDoc(memberRef, {
+        await d1Api.updateMemberProgress(currentUser.activeGroupId, currentUser.uid, {
           completedChapters: nextCompleted
-        }, { merge: true });
+        });
       }
     } catch (err) {
       console.error('Failed to save chapter progress:', err);
@@ -246,10 +247,9 @@ const DailyReadingDashboard = () => {
           };
           await updateActivePlan(updatedPlan);
         } else {
-          const memberRef = doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid);
-          await setDoc(memberRef, {
+          await d1Api.updateMemberProgress(currentUser.activeGroupId, currentUser.uid, {
             completedChapters: nextCompleted
-          }, { merge: true });
+          });
         }
       } catch (err) {
         console.error('Failed to save mark all complete:', err);
@@ -309,22 +309,21 @@ const DailyReadingDashboard = () => {
         const nextStreak = calculateStreak(updatedDates, todayDateStr, yesterdayDateStr);
         const nextLongestStreak = Math.max(memberProgress?.longestStreak || 0, nextStreak);
 
-        // Log progress in group members collection
-        const memberRef = doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid);
-        await setDoc(memberRef, {
+        // Log progress in group members D1 table
+        await d1Api.updateMemberProgress(currentUser.activeGroupId, currentUser.uid, {
           daysCompleted: nextDaysCompleted,
           completedDates: updatedDates,
           completedChapters: [],
           currentStreak: nextStreak,
           longestStreak: nextLongestStreak
-        }, { merge: true });
+        });
 
-        // Increment group collective progress completedChapters
-        const groupRef = doc(db, 'groups', currentUser.activeGroupId);
-        await updateDoc(groupRef, {
-          completedChapters: increment(todayAssignments.flatMap(a => a.chapters).length)
+        // Increment group collective progress completedChapters in D1
+        await d1Api.updateGroup(currentUser.activeGroupId, {
+          completedChaptersIncrement: todayAssignments.flatMap(a => a.chapters).length
         });
       }
+
 
       // Check milestones dynamically via worker
       try {

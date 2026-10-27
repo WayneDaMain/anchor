@@ -14,7 +14,14 @@ android/app/release.keystore
 *.apk
 *.aab
 
-# Cloudflare Wrangler local secrets
+# Cloudflare Wrangler local secrets & state
 .dev.vars
 **/anchor-email-worker/.dev.vars
+**/anchor-email-worker/data_seed.sql
+.wrangler/
+**/.wrangler/
+
+# Firestore backups & extracted data
+data/
+
 

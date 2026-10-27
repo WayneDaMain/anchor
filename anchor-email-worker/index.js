@@ -13,8 +13,8 @@ export default {
     // Setup CORS headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-user-id'
     };
 
     if (request.method === 'OPTIONS') {
@@ -22,6 +22,136 @@ export default {
     }
 
     try {
+      // Stream Android release APK directly from Cloudflare R2
+      if (url.pathname === '/Anchor.apk' || url.pathname === '/download/Anchor.apk' || url.pathname === '/api/download/Anchor.apk') {
+        const bucket = env.RELEASES_BUCKET;
+        if (!bucket) {
+          return new Response("R2 RELEASES_BUCKET is not bound", { status: 500, headers: corsHeaders });
+        }
+        const object = await bucket.get('Anchor.apk');
+        if (!object) {
+          return new Response("Anchor.apk not found in R2 storage", { status: 404, headers: corsHeaders });
+        }
+
+        const headers = new Headers();
+        object.writeHttpMetadata(headers);
+        headers.set('etag', object.httpEtag);
+        headers.set('Content-Type', 'application/vnd.android.package-archive');
+        headers.set('Content-Disposition', 'attachment; filename="Anchor.apk"');
+        headers.set('Cache-Control', 'public, max-age=300');
+        headers.set('Access-Control-Allow-Origin', '*');
+
+        if (request.method === 'HEAD') {
+          return new Response(null, { headers });
+        }
+
+        return new Response(object.body, { headers });
+      }
+
+      if (url.pathname.startsWith('/api/')) {
+        return await handleD1Api(url, request, env, corsHeaders);
+      }
+
+      if (false && url.pathname === '/export-firestore') {
+        const secret = request.headers.get('x-export-secret') || url.searchParams.get('secret');
+        if (secret !== 'anchor-migrate-2026') {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+        }
+
+        const token = await getGoogleAuthToken(env.FIREBASE_CLIENT_EMAIL, env.FIREBASE_PRIVATE_KEY);
+        const projectId = env.FIREBASE_PROJECT_ID;
+
+        // 1. Fetch Users
+        const users = [];
+        let usersPageToken = '';
+        do {
+          const pageUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users?pageSize=300${usersPageToken ? `&pageToken=${usersPageToken}` : ''}`;
+          const res = await fetch(pageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok) {
+            return new Response(JSON.stringify({ error: "Failed to fetch users", details: await res.text() }), { status: 500, headers: corsHeaders });
+          }
+          const data = await res.json();
+          if (data.documents) {
+            for (const doc of data.documents) {
+              const id = doc.name.split('/').pop();
+              const fields = parseFirestoreFields(doc.fields);
+              users.push({ id, ...fields });
+            }
+          }
+          usersPageToken = data.nextPageToken;
+        } while (usersPageToken);
+
+        // 2. Fetch Groups & their subcollections
+        const groups = [];
+        const groupMembers = [];
+        const groupMessages = [];
+        let groupsPageToken = '';
+        do {
+          const pageUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups?pageSize=300${groupsPageToken ? `&pageToken=${groupsPageToken}` : ''}`;
+          const res = await fetch(pageUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.documents) {
+              for (const doc of data.documents) {
+                const id = doc.name.split('/').pop();
+                const fields = parseFirestoreFields(doc.fields);
+                groups.push({ id, ...fields });
+
+                // Fetch members for this group
+                const membersUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${id}/members?pageSize=300`;
+                const memRes = await fetch(membersUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (memRes.ok) {
+                  const memData = await memRes.json();
+                  if (memData.documents) {
+                    for (const mDoc of memData.documents) {
+                      const userId = mDoc.name.split('/').pop();
+                      const mFields = parseFirestoreFields(mDoc.fields);
+                      groupMembers.push({ groupId: id, userId, ...mFields });
+                    }
+                  }
+                }
+
+                // Fetch messages for this group
+                const messagesUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/groups/${id}/messages?pageSize=300`;
+                const msgRes = await fetch(messagesUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (msgRes.ok) {
+                  const msgData = await msgRes.json();
+                  if (msgData.documents) {
+                    for (const mDoc of msgData.documents) {
+                      const msgId = mDoc.name.split('/').pop();
+                      const msgFields = parseFirestoreFields(mDoc.fields);
+                      groupMessages.push({ id: msgId, groupId: id, ...msgFields });
+                    }
+                  }
+                }
+              }
+            }
+            groupsPageToken = data.nextPageToken;
+          } else {
+            break;
+          }
+        } while (groupsPageToken);
+
+        return new Response(JSON.stringify({
+          success: true,
+          counts: {
+            users: users.length,
+            groups: groups.length,
+            members: groupMembers.length,
+            messages: groupMessages.length
+          },
+          data: {
+            users,
+            groups,
+            groupMembers,
+            groupMessages
+          }
+        }, null, 2), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (url.pathname === '/contact' && request.method === 'POST') {
         const { name, email, message } = await request.json();
         if (!name || !email || !message) {
@@ -251,6 +381,507 @@ export default {
     }
   }
 };
+
+async function handleD1Api(url, request, env, corsHeaders) {
+  const method = request.method;
+  const path = url.pathname;
+  const db = env.DB;
+
+  if (!db) {
+    return new Response(JSON.stringify({ error: "Cloudflare D1 database binding (env.DB) is not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const jsonRes = (data, status = 200) => {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  };
+
+  const errRes = (msg, status = 400) => {
+    return new Response(JSON.stringify({ error: msg }), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  };
+
+  try {
+    // ── 1. Users ──
+    // /api/users/:id
+    const userMatch = path.match(/^\/api\/users\/([^/]+)$/);
+    if (userMatch) {
+      const userId = decodeURIComponent(userMatch[1]);
+      if (method === 'GET') {
+        const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+        if (!user) return errRes('User not found', 404);
+        return jsonRes({
+          ...user,
+          emailSettings: user.emailSettings ? JSON.parse(user.emailSettings) : null,
+          activePlan: user.activePlan ? JSON.parse(user.activePlan) : null
+        });
+      }
+
+      if (method === 'POST') {
+        const body = await request.json();
+        const existing = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+        const now = new Date().toISOString();
+
+        if (!existing) {
+          await db.prepare(`
+            INSERT INTO users (id, email, fullName, photoURL, timezone, emailSettings, activeGroupId, activePlan, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            userId,
+            body.email || null,
+            body.fullName || '',
+            body.photoURL || null,
+            body.timezone || 'UTC',
+            body.emailSettings ? JSON.stringify(body.emailSettings) : null,
+            body.activeGroupId || null,
+            body.activePlan ? JSON.stringify(body.activePlan) : null,
+            body.createdAt || now,
+            now
+          ).run();
+        } else {
+          const email = body.email !== undefined ? body.email : existing.email;
+          const fullName = body.fullName !== undefined ? body.fullName : existing.fullName;
+          const photoURL = body.photoURL !== undefined ? body.photoURL : existing.photoURL;
+          const timezone = body.timezone !== undefined ? body.timezone : existing.timezone;
+          const emailSettings = body.emailSettings !== undefined
+            ? (body.emailSettings ? JSON.stringify(body.emailSettings) : null)
+            : existing.emailSettings;
+          const activeGroupId = body.activeGroupId !== undefined ? body.activeGroupId : existing.activeGroupId;
+          const activePlan = body.activePlan !== undefined
+            ? (body.activePlan ? JSON.stringify(body.activePlan) : null)
+            : existing.activePlan;
+
+          await db.prepare(`
+            UPDATE users SET
+              email = ?,
+              fullName = ?,
+              photoURL = ?,
+              timezone = ?,
+              emailSettings = ?,
+              activeGroupId = ?,
+              activePlan = ?,
+              updatedAt = ?
+            WHERE id = ?
+          `).bind(
+            email,
+            fullName,
+            photoURL,
+            timezone,
+            emailSettings,
+            activeGroupId,
+            activePlan,
+            now,
+            userId
+          ).run();
+        }
+
+        const updated = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+        return jsonRes({
+          ...updated,
+          emailSettings: updated.emailSettings ? JSON.parse(updated.emailSettings) : null,
+          activePlan: updated.activePlan ? JSON.parse(updated.activePlan) : null
+        });
+      }
+
+      if (method === 'DELETE') {
+        const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+        if (user && user.activeGroupId) {
+          const group = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(user.activeGroupId).first();
+          if (group) {
+            if (group.creatorId === userId) {
+              await db.prepare('DELETE FROM groups WHERE id = ?').bind(group.id).run();
+              await db.prepare('DELETE FROM group_members WHERE groupId = ?').bind(group.id).run();
+              await db.prepare('DELETE FROM group_messages WHERE groupId = ?').bind(group.id).run();
+            } else {
+              await db.prepare('DELETE FROM group_members WHERE groupId = ? AND userId = ?').bind(group.id, userId).run();
+              await db.prepare('UPDATE groups SET memberCount = MAX(0, memberCount - 1), updatedAt = ? WHERE id = ?').bind(new Date().toISOString(), group.id).run();
+            }
+          }
+        }
+        await db.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
+        return jsonRes({ success: true });
+      }
+    }
+
+    // ── 2. Groups ──
+    // Find by inviteCode: /api/groups/by-code/:code
+    const codeMatch = path.match(/^\/api\/groups\/by-code\/([^/]+)$/);
+    if (codeMatch && method === 'GET') {
+      const code = decodeURIComponent(codeMatch[1]).trim().toUpperCase();
+      const group = await db.prepare('SELECT * FROM groups WHERE inviteCode = ?').bind(code).first();
+      if (!group) return errRes('Group not found', 404);
+      return jsonRes({
+        ...group,
+        isPrivate: Boolean(group.isPrivate),
+        isChatEnabled: Boolean(group.isChatEnabled),
+        plan: group.plan ? JSON.parse(group.plan) : null
+      });
+    }
+
+    // List public groups & Create group: /api/groups
+    if (path === '/api/groups') {
+      if (method === 'GET') {
+        const inviteCode = url.searchParams.get('inviteCode');
+        if (inviteCode) {
+          const group = await db.prepare('SELECT * FROM groups WHERE inviteCode = ?').bind(inviteCode.trim().toUpperCase()).first();
+          if (!group) return errRes('Group not found', 404);
+          return jsonRes({
+            ...group,
+            isPrivate: Boolean(group.isPrivate),
+            isChatEnabled: Boolean(group.isChatEnabled),
+            plan: group.plan ? JSON.parse(group.plan) : null
+          });
+        }
+
+        const list = await db.prepare('SELECT * FROM groups WHERE isPrivate = 0 ORDER BY createdAt DESC').all();
+        const groups = (list.results || []).map(g => ({
+          ...g,
+          isPrivate: Boolean(g.isPrivate),
+          isChatEnabled: Boolean(g.isChatEnabled),
+          plan: g.plan ? JSON.parse(g.plan) : null
+        }));
+        return jsonRes(groups);
+      }
+
+      if (method === 'POST') {
+        const body = await request.json();
+        const id = body.id || ('grp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16));
+        const now = new Date().toISOString();
+
+        await db.prepare(`
+          INSERT INTO groups (id, name, description, planId, plan, isPrivate, inviteCode, memberCount, creatorId, creatorName, photoURL, isChatEnabled, completedChapters, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          id,
+          body.name || 'Untitled Group',
+          body.description || '',
+          body.planId || (body.plan?.id || null),
+          body.plan ? JSON.stringify(body.plan) : null,
+          body.isPrivate ? 1 : 0,
+          body.inviteCode || Math.random().toString(36).substring(2, 8).toUpperCase(),
+          1,
+          body.creatorId,
+          body.creatorName || '',
+          body.photoURL || null,
+          body.isChatEnabled !== false ? 1 : 0,
+          0,
+          now,
+          now
+        ).run();
+
+        // Add creator as member
+        await db.prepare(`
+          INSERT INTO group_members (groupId, userId, displayName, photoURL, role, daysCompleted, completedDates, completedChapters, currentStreak, longestStreak, joinedAt, updatedAt)
+          VALUES (?, ?, ?, ?, 'creator', 0, '[]', '[]', 0, 0, ?, ?)
+        `).bind(
+          id,
+          body.creatorId,
+          body.creatorName || '',
+          body.creatorPhotoURL || body.photoURL || null,
+          now,
+          now
+        ).run();
+
+        // Set creator's activeGroupId
+        await db.prepare('UPDATE users SET activeGroupId = ?, updatedAt = ? WHERE id = ?').bind(id, now, body.creatorId).run();
+
+        const created = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(id).first();
+        return jsonRes({
+          ...created,
+          isPrivate: Boolean(created.isPrivate),
+          isChatEnabled: Boolean(created.isChatEnabled),
+          plan: created.plan ? JSON.parse(created.plan) : null
+        }, 201);
+      }
+    }
+
+    // Single Group: /api/groups/:id (GET, PATCH, DELETE)
+    const groupSingleMatch = path.match(/^\/api\/groups\/([^/]+)$/);
+    if (groupSingleMatch) {
+      const groupId = decodeURIComponent(groupSingleMatch[1]);
+      if (method === 'GET') {
+        const group = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(groupId).first();
+        if (!group) return errRes('Group not found', 404);
+        return jsonRes({
+          ...group,
+          isPrivate: Boolean(group.isPrivate),
+          isChatEnabled: Boolean(group.isChatEnabled),
+          plan: group.plan ? JSON.parse(group.plan) : null
+        });
+      }
+
+      if (method === 'PATCH') {
+        const body = await request.json();
+        const existing = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(groupId).first();
+        if (!existing) return errRes('Group not found', 404);
+
+        const now = new Date().toISOString();
+        const name = body.name !== undefined ? body.name : existing.name;
+        const description = body.description !== undefined ? body.description : existing.description;
+        const photoURL = body.photoURL !== undefined ? body.photoURL : existing.photoURL;
+        const isChatEnabled = body.isChatEnabled !== undefined ? (body.isChatEnabled ? 1 : 0) : existing.isChatEnabled;
+        const isPrivate = body.isPrivate !== undefined ? (body.isPrivate ? 1 : 0) : existing.isPrivate;
+        const completedChaptersIncrement = body.completedChaptersIncrement !== undefined ? Number(body.completedChaptersIncrement) : 0;
+        const completedChapters = existing.completedChapters + completedChaptersIncrement;
+
+        await db.prepare(`
+          UPDATE groups SET
+            name = ?,
+            description = ?,
+            photoURL = ?,
+            isChatEnabled = ?,
+            isPrivate = ?,
+            completedChapters = ?,
+            updatedAt = ?
+          WHERE id = ?
+        `).bind(
+          name,
+          description,
+          photoURL,
+          isChatEnabled,
+          isPrivate,
+          completedChapters,
+          now,
+          groupId
+        ).run();
+
+        const updated = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(groupId).first();
+        return jsonRes({
+          ...updated,
+          isPrivate: Boolean(updated.isPrivate),
+          isChatEnabled: Boolean(updated.isChatEnabled),
+          plan: updated.plan ? JSON.parse(updated.plan) : null
+        });
+      }
+
+      if (method === 'DELETE') {
+        await db.prepare('DELETE FROM groups WHERE id = ?').bind(groupId).run();
+        await db.prepare('DELETE FROM group_members WHERE groupId = ?').bind(groupId).run();
+        await db.prepare('DELETE FROM group_messages WHERE groupId = ?').bind(groupId).run();
+        await db.prepare('UPDATE users SET activeGroupId = NULL, updatedAt = ? WHERE activeGroupId = ?').bind(new Date().toISOString(), groupId).run();
+        return jsonRes({ success: true });
+      }
+    }
+
+    // ── 3. Group Members ──
+    // List members: /api/groups/:id/members
+    const membersListMatch = path.match(/^\/api\/groups\/([^/]+)\/members$/);
+    if (membersListMatch && method === 'GET') {
+      const groupId = decodeURIComponent(membersListMatch[1]);
+      const list = await db.prepare('SELECT * FROM group_members WHERE groupId = ? ORDER BY joinedAt ASC').bind(groupId).all();
+      const members = (list.results || []).map(m => ({
+        ...m,
+        completedDates: m.completedDates ? JSON.parse(m.completedDates) : [],
+        completedChapters: m.completedChapters ? JSON.parse(m.completedChapters) : []
+      }));
+      return jsonRes(members);
+    }
+
+    // Join group: POST /api/groups/:id/join
+    const joinMatch = path.match(/^\/api\/groups\/([^/]+)\/join$/);
+    if (joinMatch && method === 'POST') {
+      const groupId = decodeURIComponent(joinMatch[1]);
+      const body = await request.json();
+      const userId = body.userId;
+      if (!userId) return errRes('userId is required', 400);
+
+      const now = new Date().toISOString();
+      await db.prepare(`
+        INSERT OR REPLACE INTO group_members (groupId, userId, displayName, photoURL, role, daysCompleted, completedDates, completedChapters, currentStreak, longestStreak, joinedAt, updatedAt)
+        VALUES (?, ?, ?, ?, 'member', 0, '[]', '[]', 0, 0, ?, ?)
+      `).bind(
+        groupId,
+        userId,
+        body.displayName || '',
+        body.photoURL || null,
+        now,
+        now
+      ).run();
+
+      await db.prepare('UPDATE groups SET memberCount = memberCount + 1, updatedAt = ? WHERE id = ?').bind(now, groupId).run();
+      await db.prepare('UPDATE users SET activeGroupId = ?, updatedAt = ? WHERE id = ?').bind(groupId, now, userId).run();
+
+      return jsonRes({ success: true, groupId, userId });
+    }
+
+    // Leave group: POST /api/groups/:id/leave
+    const leaveMatch = path.match(/^\/api\/groups\/([^/]+)\/leave$/);
+    if (leaveMatch && method === 'POST') {
+      const groupId = decodeURIComponent(leaveMatch[1]);
+      const body = await request.json();
+      const userId = body.userId;
+      if (!userId) return errRes('userId is required', 400);
+
+      const now = new Date().toISOString();
+      const group = await db.prepare('SELECT * FROM groups WHERE id = ?').bind(groupId).first();
+      if (group && group.creatorId === userId) {
+        // Disband
+        await db.prepare('DELETE FROM groups WHERE id = ?').bind(groupId).run();
+        await db.prepare('DELETE FROM group_members WHERE groupId = ?').bind(groupId).run();
+        await db.prepare('DELETE FROM group_messages WHERE groupId = ?').bind(groupId).run();
+        await db.prepare('UPDATE users SET activeGroupId = NULL, updatedAt = ? WHERE activeGroupId = ?').bind(now, groupId).run();
+      } else {
+        // Leave
+        await db.prepare('DELETE FROM group_members WHERE groupId = ? AND userId = ?').bind(groupId, userId).run();
+        await db.prepare('UPDATE groups SET memberCount = MAX(0, memberCount - 1), updatedAt = ? WHERE id = ?').bind(now, groupId).run();
+        await db.prepare('UPDATE users SET activeGroupId = NULL, updatedAt = ? WHERE id = ?').bind(now, userId).run();
+      }
+      return jsonRes({ success: true });
+    }
+
+    // Member Progress: GET & PATCH /api/groups/:id/members/:userId
+    const memberProgressMatch = path.match(/^\/api\/groups\/([^/]+)\/members\/([^/]+)$/);
+    if (memberProgressMatch) {
+      const groupId = decodeURIComponent(memberProgressMatch[1]);
+      const userId = decodeURIComponent(memberProgressMatch[2]);
+
+      if (method === 'GET') {
+        const member = await db.prepare('SELECT * FROM group_members WHERE groupId = ? AND userId = ?').bind(groupId, userId).first();
+        if (!member) return errRes('Member not found', 404);
+        return jsonRes({
+          ...member,
+          completedDates: member.completedDates ? JSON.parse(member.completedDates) : [],
+          completedChapters: member.completedChapters ? JSON.parse(member.completedChapters) : []
+        });
+      }
+
+      if (method === 'PATCH' || method === 'POST') {
+        const body = await request.json();
+        const existing = await db.prepare('SELECT * FROM group_members WHERE groupId = ? AND userId = ?').bind(groupId, userId).first();
+        const now = new Date().toISOString();
+
+        const daysCompleted = body.daysCompleted !== undefined ? Number(body.daysCompleted) : (existing?.daysCompleted || 0);
+        const completedDates = body.completedDates !== undefined
+          ? JSON.stringify(body.completedDates)
+          : (existing?.completedDates || '[]');
+        const completedChapters = body.completedChapters !== undefined
+          ? JSON.stringify(body.completedChapters)
+          : (existing?.completedChapters || '[]');
+        const currentStreak = body.currentStreak !== undefined ? Number(body.currentStreak) : (existing?.currentStreak || 0);
+        const longestStreak = body.longestStreak !== undefined ? Number(body.longestStreak) : (existing?.longestStreak || 0);
+        const displayName = body.displayName !== undefined ? body.displayName : (existing?.displayName || '');
+        const photoURL = body.photoURL !== undefined ? body.photoURL : (existing?.photoURL || null);
+
+        if (!existing) {
+          await db.prepare(`
+            INSERT INTO group_members (groupId, userId, displayName, photoURL, role, daysCompleted, completedDates, completedChapters, currentStreak, longestStreak, joinedAt, updatedAt)
+            VALUES (?, ?, ?, ?, 'member', ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            groupId,
+            userId,
+            displayName,
+            photoURL,
+            daysCompleted,
+            completedDates,
+            completedChapters,
+            currentStreak,
+            longestStreak,
+            now,
+            now
+          ).run();
+        } else {
+          await db.prepare(`
+            UPDATE group_members SET
+              daysCompleted = ?,
+              completedDates = ?,
+              completedChapters = ?,
+              currentStreak = ?,
+              longestStreak = ?,
+              displayName = ?,
+              photoURL = ?,
+              updatedAt = ?
+            WHERE groupId = ? AND userId = ?
+          `).bind(
+            daysCompleted,
+            completedDates,
+            completedChapters,
+            currentStreak,
+            longestStreak,
+            displayName,
+            photoURL,
+            now,
+            groupId,
+            userId
+          ).run();
+        }
+
+        const updated = await db.prepare('SELECT * FROM group_members WHERE groupId = ? AND userId = ?').bind(groupId, userId).first();
+        return jsonRes({
+          ...updated,
+          completedDates: updated.completedDates ? JSON.parse(updated.completedDates) : [],
+          completedChapters: updated.completedChapters ? JSON.parse(updated.completedChapters) : []
+        });
+      }
+    }
+
+    // ── 4. Group Chat Messages ──
+    // GET & POST /api/groups/:id/messages
+    const messagesMatch = path.match(/^\/api\/groups\/([^/]+)\/messages$/);
+    if (messagesMatch) {
+      const groupId = decodeURIComponent(messagesMatch[1]);
+      if (method === 'GET') {
+        const after = url.searchParams.get('after');
+        let query = 'SELECT * FROM group_messages WHERE groupId = ?';
+        const params = [groupId];
+        if (after) {
+          query += ' AND timestamp > ?';
+          params.push(after);
+        }
+        query += ' ORDER BY timestamp ASC LIMIT 200';
+        const list = await db.prepare(query).bind(...params).all();
+        return jsonRes(list.results || []);
+      }
+
+      if (method === 'POST') {
+        const body = await request.json();
+        const id = body.id || ('msg_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16));
+        const timestamp = body.timestamp || new Date().toISOString();
+
+        await db.prepare(`
+          INSERT INTO group_messages (id, groupId, senderId, senderName, senderPhotoURL, text, timestamp, type)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          id,
+          groupId,
+          body.senderId,
+          body.senderName || 'Anonymous',
+          body.senderPhotoURL || null,
+          body.text,
+          timestamp,
+          body.type || 'text'
+        ).run();
+
+        // Trigger push notification to other members
+        try {
+          const members = await db.prepare('SELECT userId FROM group_members WHERE groupId = ?').bind(groupId).all();
+          const otherUids = (members.results || []).map(m => m.userId).filter(uid => uid !== body.senderId);
+          if (otherUids.length > 0) {
+            const group = await db.prepare('SELECT name FROM groups WHERE id = ?').bind(groupId).first();
+            const groupName = group?.name || 'Group Chat';
+            await sendPushNotification(otherUids, `${groupName} 💬`, `${body.senderName}: ${body.text}`, env);
+          }
+        } catch (pushErr) {
+          console.warn('Failed to send push notification for chat message:', pushErr.message);
+        }
+
+        const created = await db.prepare('SELECT * FROM group_messages WHERE id = ?').bind(id).first();
+        return jsonRes(created, 201);
+      }
+    }
+
+    return errRes('API Route not found: ' + path, 404);
+  } catch (apiErr) {
+    console.error('D1 API Error:', apiErr);
+    return errRes(apiErr.message, 500);
+  }
+}
 
 async function handleNotifications(env) {
   // Verify secrets are present
@@ -1624,3 +2255,26 @@ function b64(input) {
     .replace(/\//g, '_')
     .replace(/=/g, '');
 }
+
+function parseFirestoreValue(val) {
+  if (!val) return null;
+  if ('stringValue' in val) return val.stringValue;
+  if ('integerValue' in val) return parseInt(val.integerValue, 10);
+  if ('doubleValue' in val) return Number(val.doubleValue);
+  if ('booleanValue' in val) return val.booleanValue;
+  if ('timestampValue' in val) return val.timestampValue;
+  if ('nullValue' in val) return null;
+  if ('mapValue' in val) return parseFirestoreFields(val.mapValue?.fields || {});
+  if ('arrayValue' in val) return (val.arrayValue?.values || []).map(parseFirestoreValue);
+  return null;
+}
+
+function parseFirestoreFields(fields) {
+  if (!fields) return {};
+  const res = {};
+  for (const [key, val] of Object.entries(fields)) {
+    res[key] = parseFirestoreValue(val);
+  }
+  return res;
+}
+

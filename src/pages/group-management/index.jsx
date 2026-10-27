@@ -20,19 +20,7 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  getDoc,
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  increment,
-  updateDoc
-} from 'firebase/firestore';
-import { db } from '../../firebase';
+import { d1Api } from '../../services/d1Api';
 
 const GroupManagement = () => {
   const navigate = useNavigate();
@@ -52,22 +40,18 @@ const GroupManagement = () => {
   const fetchGroups = async () => {
     setLoadingGroups(true);
     try {
-      // Fetch discover groups (all public groups)
-      const q = query(collection(db, 'groups'), where('isPrivate', '==', false));
-      const snap = await getDocs(q);
-      const publicGroups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setDiscoverGroups(publicGroups);
+      // Fetch discover groups (all public groups from D1)
+      const publicGroups = await d1Api.getPublicGroups();
+      setDiscoverGroups(publicGroups || []);
 
-      // Fetch active group
+      // Fetch active group from D1
       if (currentUser?.activeGroupId) {
-        const activeDoc = await getDoc(doc(db, 'groups', currentUser.activeGroupId));
-        if (activeDoc.exists()) {
-          const memberDoc = await getDoc(doc(db, 'groups', currentUser.activeGroupId, 'members', currentUser.uid));
-          const memberData = memberDoc.exists() ? memberDoc.data() : { daysCompleted: 0 };
+        const activeGroup = await d1Api.getGroup(currentUser.activeGroupId);
+        if (activeGroup) {
+          const memberData = await d1Api.getMemberProgress(currentUser.activeGroupId, currentUser.uid) || { daysCompleted: 0 };
           setMyGroups([{
-            id: activeDoc.id,
-            ...activeDoc.data(),
-            completedChapters: memberData.daysCompleted * 3, // display stats
+            ...activeGroup,
+            completedChapters: (memberData.daysCompleted || 0) * 3, // display stats
             memberProgress: memberData
           }]);
         } else {
@@ -77,7 +61,7 @@ const GroupManagement = () => {
         setMyGroups([]);
       }
     } catch (err) {
-      console.error('Error fetching groups:', err);
+      console.error('Error fetching groups from Cloudflare D1:', err);
     } finally {
       setLoadingGroups(false);
     }
@@ -114,12 +98,9 @@ const GroupManagement = () => {
       onConfirm: async () => {
         try {
           if (isCreator) {
-            await deleteDoc(doc(db, 'groups', groupId));
+            await d1Api.deleteGroup(groupId);
           } else {
-            await deleteDoc(doc(db, 'groups', groupId, 'members', currentUser.uid));
-            await updateDoc(doc(db, 'groups', groupId), {
-              memberCount: increment(-1)
-            });
+            await d1Api.leaveGroup(groupId, currentUser.uid);
           }
           await updateUserProfile({ activeGroupId: null });
         } catch (err) {
@@ -154,18 +135,9 @@ const GroupManagement = () => {
     }
 
     try {
-      const memberRef = doc(db, 'groups', group.id, 'members', currentUser.uid);
-      await setDoc(memberRef, {
-        uid: currentUser.uid,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        photoURL: currentUser.photoURL || null,
-        daysCompleted: 0,
-        completedDates: [],
-        joinedAt: new Date().toISOString()
-      });
-
-      await updateDoc(doc(db, 'groups', group.id), {
-        memberCount: increment(1)
+      await d1Api.joinGroup(group.id, currentUser.uid, {
+        displayName: currentUser.displayName || currentUser.fullName || currentUser.email?.split('@')[0],
+        photoURL: currentUser.photoURL || null
       });
 
       await updateUserProfile({ activeGroupId: group.id });
@@ -180,7 +152,7 @@ const GroupManagement = () => {
           body: JSON.stringify({
             userId: currentUser.uid,
             email: currentUser.email,
-            name: currentUser.displayName || currentUser.email.split('@')[0],
+            name: currentUser.displayName || currentUser.fullName || currentUser.email?.split('@')[0],
             groupName: group.name
           })
         });
@@ -212,9 +184,8 @@ const GroupManagement = () => {
     }
 
     try {
-      const q = query(collection(db, 'groups'), where('inviteCode', '==', code.trim().toUpperCase()));
-      const snap = await getDocs(q);
-      if (snap.empty) {
+      const group = await d1Api.getGroupByInviteCode(code);
+      if (!group) {
         setConfirmConfig({
           title: 'Invalid Invite Code',
           message: 'The invitation code you entered is invalid. Please check and try again.',
@@ -225,21 +196,9 @@ const GroupManagement = () => {
         return;
       }
 
-      const groupDoc = snap.docs[0];
-      const group = { id: groupDoc.id, ...groupDoc.data() };
-
-      const memberRef = doc(db, 'groups', group.id, 'members', currentUser.uid);
-      await setDoc(memberRef, {
-        uid: currentUser.uid,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        photoURL: currentUser.photoURL || null,
-        daysCompleted: 0,
-        completedDates: [],
-        joinedAt: new Date().toISOString()
-      });
-
-      await updateDoc(doc(db, 'groups', group.id), {
-        memberCount: increment(1)
+      await d1Api.joinGroup(group.id, currentUser.uid, {
+        displayName: currentUser.displayName || currentUser.fullName || currentUser.email?.split('@')[0],
+        photoURL: currentUser.photoURL || null
       });
 
       await updateUserProfile({ activeGroupId: group.id });
