@@ -193,11 +193,35 @@ export default {
       }
 
       if (url.pathname === '/goodbye' && request.method === 'POST') {
-        const { email, name } = await request.json();
+        const { email, name, userId } = await request.json();
         if (!email) {
           return new Response("Email is required", { status: 400, headers: corsHeaders });
         }
         await sendGoodbyeEmail(email, name || "there", env.RESEND_API_KEY);
+
+        // Clean up user from Firestore so no orphan document remains
+        if (userId && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+          try {
+            const token = await getGoogleAuthToken(env.FIREBASE_CLIENT_EMAIL, env.FIREBASE_PRIVATE_KEY);
+            const projectId = env.FIREBASE_PROJECT_ID;
+            await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          } catch (fsErr) {
+            console.error(`Failed to delete Firestore document for user ${userId} in /goodbye:`, fsErr);
+          }
+        }
+
+        // Clean up from D1 if configured
+        if (userId && env.DB) {
+          try {
+            await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
+          } catch (d1Err) {
+            console.error(`Failed to delete D1 user ${userId} in /goodbye:`, d1Err);
+          }
+        }
+
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -506,6 +530,21 @@ async function handleD1Api(url, request, env, corsHeaders) {
           }
         }
         await db.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
+
+        // Also delete user from Firestore so no orphan document remains
+        if (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+          try {
+            const token = await getGoogleAuthToken(env.FIREBASE_CLIENT_EMAIL, env.FIREBASE_PRIVATE_KEY);
+            const projectId = env.FIREBASE_PROJECT_ID;
+            await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          } catch (fsErr) {
+            console.error(`Failed to delete Firestore document for user ${userId}:`, fsErr);
+          }
+        }
+
         return jsonRes({ success: true });
       }
     }
@@ -920,6 +959,39 @@ async function handleNotifications(env) {
 
     if (!email || !timezone) continue;
 
+    // ── Check if account is deleted ──
+    // 1. Explicit deleted flag in Firestore
+    if (fields.isDeleted?.booleanValue === true || fields.deleted?.booleanValue === true) {
+      console.log(`Skipping notification: user ${userId} flagged as deleted.`);
+      try {
+        await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error(`Error deleting Firestore doc for flagged user ${userId}:`, err);
+      }
+      continue;
+    }
+
+    // 2. Cloudflare D1 check: if user is not in D1, account has been deleted
+    let d1User = null;
+    if (env.DB) {
+      d1User = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+      if (!d1User) {
+        console.log(`Skipping notification: user ${userId} (${email}) not in D1 (deleted account). Cleaning up Firestore doc.`);
+        try {
+          await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (cleanupErr) {
+          console.error(`Failed to delete orphan Firestore user doc ${userId}:`, cleanupErr);
+        }
+        continue;
+      }
+    }
+
     const localHour = getLocalHour(timezone, currentUtcDate);
     const localDay = getLocalDayOfWeek(timezone, currentUtcDate);
     const localDateStr = getLocalDateString(timezone, currentUtcDate);
@@ -1076,12 +1148,26 @@ async function handleNotifications(env) {
     }
 
     // Case G: Weekly Start Plan Reminder (on Sunday at local 10 AM, if they don't have an active plan)
-    const lastStartPlanReminderSentDate = fields.lastStartPlanReminderSentDate?.stringValue;
-    if (!activePlan && localDay === "Sun" && localHour === 10 && lastStartPlanReminderSentDate !== localDateStr) {
+    // Send at most 4 times (once per week). If the person still hasn't created a plan, stop reminding.
+    let d1EmailSettings = {};
+    if (d1User?.emailSettings) {
+      try {
+        d1EmailSettings = typeof d1User.emailSettings === 'string' ? JSON.parse(d1User.emailSettings) : d1User.emailSettings;
+      } catch (e) {}
+    }
+
+    const lastStartPlanReminderSentDate = fields.lastStartPlanReminderSentDate?.stringValue || d1EmailSettings.lastStartPlanReminderSentDate;
+    const startPlanReminderCount = parseInt(
+      fields.startPlanReminderCount?.integerValue ||
+      String(d1EmailSettings.startPlanReminderCount || "0"),
+      10
+    );
+
+    if (!activePlan && startPlanReminderCount < 4 && localDay === "Sun" && localHour === 10 && lastStartPlanReminderSentDate !== localDateStr) {
       const name = resolveUserName(fields);
       await sendStartPlanReminderEmail(email, name, env.RESEND_API_KEY);
       await sendPushNotification(userId, "Start a reading plan", "Create a personalized reading plan today to help build a daily Bible reading habit.", env);
-      await markStartPlanReminderSent(userId, projectId, localDateStr, token);
+      await markStartPlanReminderSent(userId, projectId, localDateStr, startPlanReminderCount + 1, token, env);
     }
   }
 }
@@ -1595,14 +1681,33 @@ async function sendStartPlanReminderEmail(email, name, resendApiKey) {
   await sendEmail(email, "Start your Bible reading plan", html, resendApiKey);
 }
 
-async function markStartPlanReminderSent(userId, projectId, dateStr, authToken) {
+async function markStartPlanReminderSent(userId, projectId, dateStr, count, authToken, env) {
   await updateUserField(
     userId,
     projectId,
-    { lastStartPlanReminderSentDate: { stringValue: dateStr } },
-    ["lastStartPlanReminderSentDate"],
+    {
+      lastStartPlanReminderSentDate: { stringValue: dateStr },
+      startPlanReminderCount: { integerValue: String(count) }
+    },
+    ["lastStartPlanReminderSentDate", "startPlanReminderCount"],
     authToken
   );
+
+  if (env?.DB) {
+    try {
+      const user = await env.DB.prepare('SELECT emailSettings FROM users WHERE id = ?').bind(userId).first();
+      if (user) {
+        const settings = user.emailSettings ? JSON.parse(user.emailSettings) : {};
+        settings.startPlanReminderCount = count;
+        settings.lastStartPlanReminderSentDate = dateStr;
+        await env.DB.prepare('UPDATE users SET emailSettings = ?, updatedAt = ? WHERE id = ?')
+          .bind(JSON.stringify(settings), new Date().toISOString(), userId)
+          .run();
+      }
+    } catch (e) {
+      console.error('Failed to update D1 with reminder count:', e);
+    }
+  }
 }
 async function fetchImageBytes(url) {
   const res = await fetch(url);

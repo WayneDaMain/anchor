@@ -242,12 +242,14 @@ export const AuthProvider = ({ children }) => {
 
     // 2. Trigger goodbye email via Cloudflare Worker API
     try {
-      fetch('https://anchor-email-worker.emaxstone12.workers.dev/goodbye', {
+      const workerUrl = import.meta.env.VITE_WORKER_URL || 'https://anchor-email-worker.emaxstone12.workers.dev';
+      fetch(workerUrl + '/goodbye', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          userId: uid,
           email: user.email,
           name: currentUser.fullName || user.displayName || 'there'
         })
